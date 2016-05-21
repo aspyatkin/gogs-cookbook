@@ -89,6 +89,39 @@ directory 'Create SSH directory for Gogs service' do
   action :create
 end
 
+data_dir = ::File.join user_home, 'data'
+
+directory 'Create data directory for Gogs service' do
+  path data_dir
+  owner node[id][:gogs][:user]
+  group node[id][:gogs][:group]
+  mode 0755
+  recursive true
+  action :create
+end
+
+avatar_dir = ::File.join data_dir, 'avatars'
+
+directory 'Create avatar directory for Gogs service' do
+  path avatar_dir
+  owner node[id][:gogs][:user]
+  group node[id][:gogs][:group]
+  mode 0755
+  recursive true
+  action :create
+end
+
+attachment_dir = ::File.join data_dir, 'attachments'
+
+directory 'Create attachment directory for Gogs service' do
+  path attachment_dir
+  owner node[id][:gogs][:user]
+  group node[id][:gogs][:group]
+  mode 0755
+  recursive true
+  action :create
+end
+
 app_ini_path = ::File.join custom_conf_path, 'app.ini'
 run_mode = node.chef_environment.start_with?('development') ? 'dev' : 'prod'
 
@@ -114,7 +147,8 @@ template 'Create custom configuration file for Gogs service' do
       http_addr: node[id][:gogs][:conf][:server][:http_addr],
       http_port: node[id][:gogs][:conf][:server][:http_port],
       ssh_root_path: ssh_root,
-      minimum_key_size_check: node[id][:gogs][:conf][:server][:minimum_key_size_check]
+      minimum_key_size_check: node[id][:gogs][:conf][:server][:minimum_key_size_check],
+      app_data_path: data_dir
     },
     database: {
       db_type: 'postgres',
@@ -149,6 +183,12 @@ template 'Create custom configuration file for Gogs service' do
     session: {
       provider: 'redis',
       provider_config: "network=tcp,addr=#{node[id][:redis][:listen][:address]}:#{node[id][:redis][:listen][:port]},db=#{node[id][:gogs][:conf][:cache][:redis_db]},pool_size=100,idle_timeout=180"
+    },
+    picture: {
+      avatar_upload_path: avatar_dir
+    },
+    attachment: {
+      path: attachment_dir
     },
     log: {
       root_path: log_dir

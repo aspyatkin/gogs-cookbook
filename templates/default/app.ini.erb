@@ -94,7 +94,7 @@ KEY_FILE = custom/https/key.pem
 ; default is the path where Gogs is executed
 STATIC_ROOT_PATH =
 ; Default path for App data
-APP_DATA_PATH = data
+APP_DATA_PATH = <%= @server[:app_data_path] %>
 ; Application level GZIP support
 ENABLE_GZIP = false
 ; Landing page for non-logged users, can be "home" or "explore"
@@ -217,7 +217,7 @@ GC_INTERVAL_TIME = 86400
 SESSION_LIFE_TIME = 86400
 
 [picture]
-AVATAR_UPLOAD_PATH = data/avatars
+AVATAR_UPLOAD_PATH = <%= @picture[:avatar_upload_path] %>
 ; Chinese users can choose "duoshuo"
 ; or a custom avatar source, like: http://cn.gravatar.com/avatar/
 GRAVATAR_SOURCE = gravatar
@@ -227,7 +227,7 @@ DISABLE_GRAVATAR = false
 ; Whether attachments are enabled. Defaults to `true`
 ENABLE = true
 ; Path for attachments. Defaults to `data/attachments`
-PATH = data/attachments
+PATH = <%= @attachment[:path] %>
 ; One or more allowed types, e.g. image/jpeg|image/png
 ALLOWED_TYPES = image/jpeg|image/png
 ; Max size of each file. Defaults to 32MB
