@@ -3,6 +3,9 @@ upstream gogs {
 }
 
 server {
+  <% if @with_ipv6 %>
+  listen [::]:80;
+  <% end %>
   listen 80;
   server_name <%= @server_name %>;
 
@@ -20,6 +23,9 @@ server {
 }
 
 server {
+  <% if @with_ipv6 %>
+  listen [::]:443 ssl http2;
+  <% end %>
   listen 443 ssl http2;
   server_name <%= @server_name %>;
 

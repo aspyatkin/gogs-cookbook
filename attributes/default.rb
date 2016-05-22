@@ -42,3 +42,4 @@ default[id][:gogs][:conf][:session][:redis_db] = 2
 
 default[id][:gogs][:frontend][:hsts_max_age] = 15_724_800
 default[id][:gogs][:frontend][:hpkp_max_age] = 604_800
+default[id][:gogs][:frontend][:with_ipv6] = false

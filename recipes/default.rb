@@ -255,6 +255,7 @@ template 'Nginx configuration for Gogs service' do
   source 'nginx.conf.erb'
   mode 0644
   variables(
+    with_ipv6: node[id][:gogs][:frontend][:with_ipv6],
     server_name: fqdn,
     backend_host: node[id][:gogs][:conf][:server][:http_addr],
     backend_port: node[id][:gogs][:conf][:server][:http_port],
