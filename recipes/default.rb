@@ -308,3 +308,18 @@ execute 'Create admin for Gogs service' do
     'ADMIN_USER_PASSWORD' => data_bag_item('gogs', node.chef_environment)['admin']['password']
   )
 end
+
+template 'Dump script for Gogs service' do
+  path ::File.join user_home, 'dump'
+  source 'dump.sh.erb'
+  owner node[id][:gogs][:user]
+  group node[id][:gogs][:group]
+  mode 0755
+  variables(
+    target_user: node[id][:gogs][:user],
+    user_home: user_home,
+    go_path: node['go']['gopath'],
+    go_bin: node['go']['gobin'],
+    gogs_work_dir: gogs_work_dir
+  )
+end

@@ -1,0 +1,8 @@
+#! /usr/bin/env sh
+target_user=${TARGET_USER:-"<%= @target_user %>"}
+if [ "$(whoami)" != "$target_user" ]; then
+  exec sudo -u "$target_user" -- "$0" "$@"
+fi
+
+cd <%= @user_home %>
+GOPATH="<%= @go_path %>" GOBIN="<%= @go_bin %>" GOGS_WORK_DIR="<%= @gogs_work_dir %>" <%= @go_bin %>/gogs dump -v
