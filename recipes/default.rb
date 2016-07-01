@@ -269,9 +269,7 @@ template 'Nginx configuration for Gogs service' do
     scts_directory: get_scts_directory(fqdn),
     hpkp: node.chef_environment.start_with?('production'),
     hpkp_pins: get_hpkp_pins(fqdn),
-    hpkp_max_age: node[id][:gogs][:frontend][:hpkp_max_age],
-    acme_challenge: node.chef_environment.start_with?('production'),
-    acme_challenge_directory: get_acme_challenge_directory(fqdn)
+    hpkp_max_age: node[id][:gogs][:frontend][:hpkp_max_age]
   )
   notifies :reload, 'service[nginx]', :immediately
 end
