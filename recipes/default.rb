@@ -5,37 +5,38 @@ include_recipe "#{id}::prerequisite_redis"
 include_recipe "#{id}::prerequisite_postgres"
 include_recipe "#{id}::prerequisite_supervisor"
 include_recipe "#{id}::prerequisite_nginx"
+include_recipe 'tls::default'
 
-golang_package node[id][:gogs][:package] do
+golang_package node[id]['gogs']['package'] do
   action :install
 end
 
-postgresql_database node[id][:postgres][:dbname] do
-  Chef::Resource::PostgresqlDatabase.send :include, Gogs::Helper
-  connection postgres_connection_info
+helper = ::ChefCookbook::Gogs.new node
+
+postgresql_database node[id]['postgres']['dbname'] do
+  connection helper.postgres_connection_info
   action :create
 end
 
-postgresql_database_user node[id][:postgres][:username] do
-  Chef::Resource::PostgresqlDatabaseUser.send :include, Gogs::Helper
-  connection postgres_connection_info
-  database_name node[id][:postgres][:dbname]
-  password data_bag_item('postgres', node.chef_environment)['credentials'][node[id][:postgres][:username]]
+postgresql_database_user node[id]['postgres']['username'] do
+  connection helper.postgres_connection_info
+  database_name node[id]['postgres']['dbname']
+  password helper.postgres_user_password(node[id]['postgres']['username'])
   privileges [:all]
   action [:create, :grant]
 end
 
 group 'Create group for Gogs service' do
-  group_name node[id][:gogs][:group]
+  group_name node[id]['gogs']['group']
   system true
   action :create
 end
 
-user_home = ::File.join '/home', node[id][:gogs][:user]
+user_home = ::File.join '/home', node[id]['gogs']['user']
 
 user 'Create user for Gogs service' do
-  username node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  username node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   shell '/bin/bash'
   system true
   manage_home true
@@ -44,24 +45,28 @@ user 'Create user for Gogs service' do
   action :create
 end
 
-log_dir = node[id][:gogs][:log_dir]
+log_dir = node[id]['gogs']['log_dir']
 
 directory 'Create log directory for Gogs service' do
   path log_dir
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
 end
 
-gogs_work_dir = ::File.join node['go']['gopath'], 'src', node[id][:gogs][:package]
+gogs_work_dir = ::File.join(
+  node['go']['gopath'],
+  'src',
+  node[id]['gogs']['package']
+)
 custom_conf_path = ::File.join gogs_work_dir, 'custom', 'conf'
 
 directory 'Create configuration directory for Gogs service' do
   path custom_conf_path
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
@@ -71,8 +76,8 @@ repository_root = ::File.join user_home, 'repositories'
 
 directory 'Create repository directory for Gogs service' do
   path repository_root
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
@@ -82,8 +87,8 @@ ssh_root = ::File.join user_home, '.ssh'
 
 directory 'Create SSH directory for Gogs service' do
   path ssh_root
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0700
   recursive true
   action :create
@@ -93,8 +98,8 @@ data_dir = ::File.join user_home, 'data'
 
 directory 'Create data directory for Gogs service' do
   path data_dir
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
@@ -104,8 +109,8 @@ avatar_dir = ::File.join data_dir, 'avatars'
 
 directory 'Create avatar directory for Gogs service' do
   path avatar_dir
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
@@ -115,8 +120,8 @@ attachment_dir = ::File.join data_dir, 'attachments'
 
 directory 'Create attachment directory for Gogs service' do
   path attachment_dir
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   recursive true
   action :create
@@ -125,64 +130,79 @@ end
 app_ini_path = ::File.join custom_conf_path, 'app.ini'
 run_mode = node.chef_environment.start_with?('development') ? 'dev' : 'prod'
 
-fqdn = node[id][:gogs][:conf][:server][:domain]
+fqdn = node[id]['gogs']['conf']['server']['domain']
 
 template 'Create custom configuration file for Gogs service' do
   path app_ini_path
   source 'app.ini.erb'
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   variables(
-    app_name: node[id][:gogs][:conf][:app_name],
-    run_user: node[id][:gogs][:user],
+    app_name: node[id]['gogs']['conf']['app_name'],
+    run_user: node[id]['gogs']['user'],
     run_mode: run_mode,
     repository: {
       root: repository_root,
-      force_private: node[id][:gogs][:conf][:repository][:force_private]
+      force_private: node[id]['gogs']['conf']['repository']['force_private']
     },
     server: {
-      protocol: node[id][:gogs][:conf][:server][:protocol],
+      protocol: node[id]['gogs']['conf']['server']['protocol'],
       domain: fqdn,
-      root_url: node[id][:gogs][:conf][:server][:root_url],
-      http_addr: node[id][:gogs][:conf][:server][:http_addr],
-      http_port: node[id][:gogs][:conf][:server][:http_port],
+      root_url: node[id]['gogs']['conf']['server']['root_url'],
+      http_addr: node[id]['gogs']['conf']['server']['http_addr'],
+      http_port: node[id]['gogs']['conf']['server']['http_port'],
       ssh_root_path: ssh_root,
-      minimum_key_size_check: node[id][:gogs][:conf][:server][:minimum_key_size_check],
+      minimum_key_size_check: \
+        node[id]['gogs']['conf']['server']['minimum_key_size_check'],
       app_data_path: data_dir
     },
     database: {
       db_type: 'postgres',
-      host: node[id][:postgres][:listen][:address],
-      port: node[id][:postgres][:listen][:port],
-      dbname: node[id][:postgres][:dbname],
-      username: node[id][:postgres][:username],
-      password: data_bag_item('postgres', node.chef_environment)['credentials'][node[id][:postgres][:username]]
+      host: node[id]['postgres']['listen']['address'],
+      port: node[id]['postgres']['listen']['port'],
+      dbname: node[id]['postgres']['dbname'],
+      username: node[id]['postgres']['username'],
+      password: helper.postgres_user_password(node[id]['postgres']['username'])
     },
     security: {
-      secret_key: data_bag_item('gogs', node.chef_environment)['security']['secret_key']
+      secret_key: \
+        data_bag_item('gogs', node.chef_environment)['security']['secret_key']
     },
     service: {
-      register_email_confirm: node[id][:gogs][:conf][:service][:register_email_confirm],
-      disable_registration: node[id][:gogs][:conf][:service][:disable_registration],
-      require_signin_view: node[id][:gogs][:conf][:service][:require_signin_view],
-      enable_notify_mail: node[id][:gogs][:conf][:service][:enable_notify_mail],
+      register_email_confirm: \
+        node[id]['gogs']['conf']['service']['register_email_confirm'],
+      disable_registration: \
+        node[id]['gogs']['conf']['service']['disable_registration'],
+      require_signin_view: \
+        node[id]['gogs']['conf']['service']['require_signin_view'],
+      enable_notify_mail: \
+        node[id]['gogs']['conf']['service']['enable_notify_mail']
     },
     mailer: {
-      enabled: node[id][:gogs][:conf][:mailer][:enabled],
+      enabled: node[id]['gogs']['conf']['mailer']['enabled'],
       host: data_bag_item('gogs', node.chef_environment)['mailer']['host'],
       port: data_bag_item('gogs', node.chef_environment)['mailer']['port'],
-      username: data_bag_item('gogs', node.chef_environment)['mailer']['username'],
-      password: data_bag_item('gogs', node.chef_environment)['mailer']['password'],
-      subject: node[id][:gogs][:conf][:mailer][:subject],
-      from: node[id][:gogs][:conf][:mailer][:from]
+      username: data_bag_item('gogs',
+                              node.chef_environment)['mailer']['username'],
+      password: data_bag_item('gogs',
+                              node.chef_environment)['mailer']['password'],
+      subject: node[id]['gogs']['conf']['mailer']['subject'],
+      from: node[id]['gogs']['conf']['mailer']['from']
     },
     cache: {
       adapter: 'redis',
-      host: "network=tcp,addr=#{node[id][:redis][:listen][:address]}:#{node[id][:redis][:listen][:port]},db=#{node[id][:gogs][:conf][:cache][:redis_db]},pool_size=100,idle_timeout=180"
+      host: "network=tcp,addr=#{node[id]['redis']['listen']['address']}:"\
+            "#{node[id]['redis']['listen']['port']},db="\
+            "#{node[id]['gogs']['conf']['cache']['redis_db']},"\
+            'pool_size=100,idle_timeout=180'
     },
     session: {
       provider: 'redis',
-      provider_config: "network=tcp,addr=#{node[id][:redis][:listen][:address]}:#{node[id][:redis][:listen][:port]},db=#{node[id][:gogs][:conf][:cache][:redis_db]},pool_size=100,idle_timeout=180"
+      provider_config: 'network=tcp,addr='\
+                       "#{node[id]['redis']['listen']['address']}:"\
+                       "#{node[id]['redis']['listen']['port']},db="\
+                       "#{node[id]['gogs']['conf']['cache']['redis_db']},"\
+                       'pool_size=100,idle_timeout=180'
     },
     picture: {
       avatar_upload_path: avatar_dir
@@ -216,7 +236,7 @@ supervisor_service 'gogs' do
   stopwaitsecs 10
   stopasgroup nil
   killasgroup nil
-  user node[id][:gogs][:user]
+  user node[id]['gogs']['user']
   redirect_stderr false
   stdout_logfile ::File.join log_dir, 'app-stdout.log'
   stdout_logfile_maxbytes '10MB'
@@ -230,7 +250,7 @@ supervisor_service 'gogs' do
   stderr_events_enabled false
   environment(
     'HOME' => user_home,
-    'USER' => node[id][:gogs][:user],
+    'USER' => node[id]['gogs']['user'],
     'GOGS_WORK_DIR' => gogs_work_dir
   )
   directory user_home
@@ -249,27 +269,32 @@ directory 'Create log directory for Nginx service' do
   action :create
 end
 
+tls_certificate fqdn do
+  action :deploy
+end
+
+tls_item = ChefCookbook::TLS.new(node).certificate_entry fqdn
+
 template 'Nginx configuration for Gogs service' do
-  ::Chef::Resource::Template.send :include, ::ModernNginx::Helper
-  path ::File.join node[:nginx][:dir], 'sites-available', 'gogs.conf'
+  path ::File.join node['nginx']['dir'], 'sites-available', 'gogs.conf'
   source 'nginx.conf.erb'
   mode 0644
   variables(
-    with_ipv6: node[id][:gogs][:frontend][:with_ipv6],
+    with_ipv6: node[id]['gogs']['frontend']['with_ipv6'],
     server_name: fqdn,
-    backend_host: node[id][:gogs][:conf][:server][:http_addr],
-    backend_port: node[id][:gogs][:conf][:server][:http_port],
+    backend_host: node[id]['gogs']['conf']['server']['http_addr'],
+    backend_port: node[id]['gogs']['conf']['server']['http_port'],
     access_log: ::File.join(nginx_log_dir, 'access.log'),
     error_log: ::File.join(nginx_log_dir, 'error.log'),
-    ssl_certificate: get_ssl_certificate_path(fqdn),
-    ssl_certificate_key: get_ssl_certificate_private_key_path(fqdn),
+    ssl_certificate: tls_item.certificate_path,
+    ssl_certificate_key: tls_item.certificate_private_key_path,
     oscp_stapling: node.chef_environment.start_with?('production'),
-    hsts_max_age: node[id][:gogs][:frontend][:hsts_max_age],
+    hsts_max_age: node[id]['gogs']['frontend']['hsts_max_age'],
     scts: node.chef_environment.start_with?('production'),
-    scts_directory: get_scts_directory(fqdn),
+    scts_directory: tls_item.scts_dir,
     hpkp: node.chef_environment.start_with?('production'),
-    hpkp_pins: get_hpkp_pins(fqdn),
-    hpkp_max_age: node[id][:gogs][:frontend][:hpkp_max_age]
+    hpkp_pins: tls_item.hpkp_pins,
+    hpkp_max_age: node[id]['gogs']['frontend']['hpkp_max_age']
   )
   notifies :reload, 'service[nginx]', :immediately
 end
@@ -278,43 +303,56 @@ nginx_site 'gogs.conf' do
   enabled true
 end
 
-create_admin_script_path = ::File.join ::Chef::Config[:file_cache_path], 'gogs_create_admin.go'
+create_admin_script_path = ::File.join(
+  ::Chef::Config['file_cache_path'],
+  'gogs_create_admin.go'
+)
 
 cookbook_file create_admin_script_path do
   source 'create_admin.go'
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0644
   action :create
 end
 
 execute 'Create admin for Gogs service' do
-  command "#{node['go']['install_dir']}/go/bin/go run #{create_admin_script_path}"
+  command "#{node['go']['install_dir']}/go/bin/go run "\
+          "#{create_admin_script_path}"
   cwd user_home
-  user node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  user node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   environment(
     'GOPATH' => node['go']['gopath'],
     'GOBIN' => node['go']['gobin'],
     'HOME' => user_home,
-    'USER' => node[id][:gogs][:user],
+    'USER' => node[id]['gogs']['user'],
     'GOGS_WORK_DIR' => gogs_work_dir,
     'GOGS_CONFIG' => app_ini_path,
     'ADMIN_USER_CREATE' => 'true',
-    'ADMIN_USER_NAME' => data_bag_item('gogs', node.chef_environment)['admin']['username'],
-    'ADMIN_USER_EMAIL' => data_bag_item('gogs', node.chef_environment)['admin']['email'],
-    'ADMIN_USER_PASSWORD' => data_bag_item('gogs', node.chef_environment)['admin']['password']
+    'ADMIN_USER_NAME' => data_bag_item(
+      'gogs',
+      node.chef_environment
+    )['admin']['username'],
+    'ADMIN_USER_EMAIL' => data_bag_item(
+      'gogs',
+      node.chef_environment
+    )['admin']['email'],
+    'ADMIN_USER_PASSWORD' => data_bag_item(
+      'gogs',
+      node.chef_environment
+    )['admin']['password']
   )
 end
 
 template 'Dump script for Gogs service' do
   path ::File.join user_home, 'dump'
   source 'dump.sh.erb'
-  owner node[id][:gogs][:user]
-  group node[id][:gogs][:group]
+  owner node[id]['gogs']['user']
+  group node[id]['gogs']['group']
   mode 0755
   variables(
-    target_user: node[id][:gogs][:user],
+    target_user: node[id]['gogs']['user'],
     user_home: user_home,
     go_path: node['go']['gopath'],
     go_bin: node['go']['gobin'],
