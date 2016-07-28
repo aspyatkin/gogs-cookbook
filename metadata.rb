@@ -2,7 +2,7 @@ name 'gogs'
 maintainer 'Alexander Pyatkin'
 maintainer_email 'aspyatkin@gmail.com'
 license 'MIT'
-version '1.1.0'
+version '1.1.1'
 description 'Installs and configures Gogs'
 long_description ::IO.read(::File.join(::File.dirname(__FILE__), 'README.md'))
 
@@ -15,6 +15,6 @@ depends 'postgresql', '~> 4.0.6'
 depends 'database', '~> 5.1.2'
 depends 'supervisor', '~> 0.4.12'
 depends 'modern_nginx', '~> 1.3.0'
-depends 'tls', '~> 1.0.1'
+depends 'tls', '~> 2.0.0'
 
 supports 'ubuntu'

@@ -5,7 +5,6 @@ include_recipe "#{id}::prerequisite_redis"
 include_recipe "#{id}::prerequisite_postgres"
 include_recipe "#{id}::prerequisite_supervisor"
 include_recipe "#{id}::prerequisite_nginx"
-include_recipe 'tls::default'
 
 golang_package node[id]['gogs']['package'] do
   action :install
