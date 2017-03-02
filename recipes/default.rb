@@ -274,10 +274,8 @@ end
 
 tls_item = ChefCookbook::TLS.new(node).certificate_entry fqdn
 
-template 'Nginx configuration for Gogs service' do
-  path ::File.join node['nginx']['dir'], 'sites-available', 'gogs.conf'
-  source 'nginx.conf.erb'
-  mode 0644
+nginx_site 'gogs' do
+  template 'nginx.conf.erb'
   variables(
     with_ipv6: node[id]['gogs']['frontend']['with_ipv6'],
     server_name: fqdn,
@@ -295,11 +293,7 @@ template 'Nginx configuration for Gogs service' do
     hpkp_pins: tls_item.hpkp_pins,
     hpkp_max_age: node[id]['gogs']['frontend']['hpkp_max_age']
   )
-  notifies :reload, 'service[nginx]', :immediately
-end
-
-nginx_site 'gogs.conf' do
-  enabled true
+  action :enable
 end
 
 create_admin_script_path = ::File.join(
