@@ -23,7 +23,7 @@ node.default['postgresql']['config']['port'] = \
 require 'digest/md5'
 
 postgres_root_username = ::ChefCookbook::Gogs.postgres_root_username
-helper = ::ChefCookbook::Gogs.new node
+helper = ::ChefCookbook::Gogs.new(node)
 
 postgres_pwd_digest = Digest::MD5.hexdigest(
   "#{helper.postgres_user_password(postgres_root_username)}"\

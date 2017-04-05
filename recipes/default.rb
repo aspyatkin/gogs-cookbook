@@ -9,7 +9,7 @@ golang_package node[id]['gogs']['package'] do
   action :install
 end
 
-helper = ::ChefCookbook::Gogs.new node
+helper = ::ChefCookbook::Gogs.new(node)
 
 postgresql_database node[id]['postgres']['dbname'] do
   connection helper.postgres_connection_info
@@ -30,7 +30,7 @@ group 'Create group for Gogs service' do
   action :create
 end
 
-user_home = ::File.join '/home', node[id]['gogs']['user']
+user_home = ::File.join('/home', node[id]['gogs']['user'])
 
 user 'Create user for Gogs service' do
   username node[id]['gogs']['user']
@@ -59,7 +59,7 @@ gogs_work_dir = ::File.join(
   'src',
   node[id]['gogs']['package']
 )
-custom_conf_path = ::File.join gogs_work_dir, 'custom', 'conf'
+custom_conf_path = ::File.join(gogs_work_dir, 'custom', 'conf')
 
 directory 'Create configuration directory for Gogs service' do
   path custom_conf_path
@@ -70,7 +70,7 @@ directory 'Create configuration directory for Gogs service' do
   action :create
 end
 
-repository_root = ::File.join user_home, 'repositories'
+repository_root = ::File.join(user_home, 'repositories')
 
 directory 'Create repository directory for Gogs service' do
   path repository_root
@@ -81,7 +81,7 @@ directory 'Create repository directory for Gogs service' do
   action :create
 end
 
-ssh_root = ::File.join user_home, '.ssh'
+ssh_root = ::File.join(user_home, '.ssh')
 
 directory 'Create SSH directory for Gogs service' do
   path ssh_root
@@ -92,7 +92,7 @@ directory 'Create SSH directory for Gogs service' do
   action :create
 end
 
-data_dir = ::File.join user_home, 'data'
+data_dir = ::File.join(user_home, 'data')
 
 directory 'Create data directory for Gogs service' do
   path data_dir
@@ -103,7 +103,7 @@ directory 'Create data directory for Gogs service' do
   action :create
 end
 
-avatar_dir = ::File.join data_dir, 'avatars'
+avatar_dir = ::File.join(data_dir, 'avatars')
 
 directory 'Create avatar directory for Gogs service' do
   path avatar_dir
@@ -114,7 +114,7 @@ directory 'Create avatar directory for Gogs service' do
   action :create
 end
 
-attachment_dir = ::File.join data_dir, 'attachments'
+attachment_dir = ::File.join(data_dir, 'attachments')
 
 directory 'Create attachment directory for Gogs service' do
   path attachment_dir
@@ -125,7 +125,7 @@ directory 'Create attachment directory for Gogs service' do
   action :create
 end
 
-app_ini_path = ::File.join custom_conf_path, 'app.ini'
+app_ini_path = ::File.join(custom_conf_path, 'app.ini')
 run_mode = node.chef_environment.start_with?('development') ? 'dev' : 'prod'
 
 fqdn = node[id]['gogs']['conf']['server']['domain']
@@ -217,7 +217,7 @@ template 'Create custom configuration file for Gogs service' do
   action :create
 end
 
-gogs_exec = ::File.join node['go']['gobin'], 'gogs'
+gogs_exec = ::File.join(node['go']['gobin'], 'gogs')
 
 supervisor_service 'gogs' do
   command "#{gogs_exec} web"
@@ -236,12 +236,12 @@ supervisor_service 'gogs' do
   killasgroup nil
   user node[id]['gogs']['user']
   redirect_stderr false
-  stdout_logfile ::File.join log_dir, 'app-stdout.log'
+  stdout_logfile ::File.join(log_dir, 'app-stdout.log')
   stdout_logfile_maxbytes '10MB'
   stdout_logfile_backups 10
   stdout_capture_maxbytes '0'
   stdout_events_enabled false
-  stderr_logfile ::File.join log_dir, 'app-stderr.log'
+  stderr_logfile ::File.join(log_dir, 'app-stderr.log')
   stderr_logfile_maxbytes '10MB'
   stderr_logfile_backups 10
   stderr_capture_maxbytes '0'
@@ -256,7 +256,7 @@ supervisor_service 'gogs' do
   action :enable
 end
 
-nginx_log_dir = ::File.join log_dir, 'nginx'
+nginx_log_dir = ::File.join(log_dir, 'nginx')
 
 directory 'Create log directory for Nginx service' do
   path nginx_log_dir
@@ -267,11 +267,20 @@ directory 'Create log directory for Nginx service' do
   action :create
 end
 
-tls_certificate fqdn do
+tls_rsa_certificate fqdn do
   action :deploy
 end
 
-tls_item = ChefCookbook::TLS.new(node).certificate_entry fqdn
+tls_rsa_item = ChefCookbook::TLS.new(node).rsa_certificate_entry(fqdn)
+tls_ec_item = nil
+
+if node[id]['gogs']['frontend']['use_ec_certificate']
+  tls_ec_certificate fqdn do
+    action :deploy
+  end
+
+  tls_ec_item = ChefCookbook::TLS.new(node).ec_certificate_entry(fqdn)
+end
 
 nginx_site 'gogs' do
   template 'nginx.conf.erb'
@@ -282,23 +291,25 @@ nginx_site 'gogs' do
     backend_port: node[id]['gogs']['conf']['server']['http_port'],
     access_log: ::File.join(nginx_log_dir, 'access.log'),
     error_log: ::File.join(nginx_log_dir, 'error.log'),
-    ssl_certificate: tls_item.certificate_path,
-    ssl_certificate_key: tls_item.certificate_private_key_path,
+    ssl_rsa_certificate: tls_rsa_item.certificate_path,
+    ssl_rsa_certificate_key: tls_rsa_item.certificate_private_key_path,
+    ssl_ec_certificate: tls_ec_item.nil? ? nil : tls_ec_item.certificate_path,
+    ssl_ec_certificate_key: tls_ec_item.nil? ? nil : tls_ec_item.certificate_private_key_path,
     oscp_stapling: node.chef_environment.start_with?('production'),
     hsts_max_age: node[id]['gogs']['frontend']['hsts_max_age'],
     scts: node.chef_environment.start_with?('production'),
-    scts_directory: tls_item.scts_dir,
+    scts_rsa_directory: tls_rsa_item.scts_dir,
+    scts_ec_directory: tls_ec_item.nil? ? nil : tls_ec_item.scts_dir,
     hpkp: node.chef_environment.start_with?('production'),
-    hpkp_pins: tls_item.hpkp_pins,
+    hpkp_pins: (
+      tls_rsa_item.hpkp_pins + (tls_ec_item.nil? ? [] : tls_ec_item.hpkp_pins)
+    ).uniq,
     hpkp_max_age: node[id]['gogs']['frontend']['hpkp_max_age']
   )
   action :enable
 end
 
-create_admin_script_path = ::File.join(
-  ::Chef::Config['file_cache_path'],
-  'gogs_create_admin.go'
-)
+create_admin_script_path = ::File.join(user_home, 'gogs_create_admin.go')
 
 cookbook_file create_admin_script_path do
   source 'create_admin.go'
@@ -338,7 +349,7 @@ execute 'Create admin for Gogs service' do
 end
 
 template 'Dump script for Gogs service' do
-  path ::File.join user_home, 'dump'
+  path ::File.join(user_home, 'dump')
   source 'dump.sh.erb'
   owner node[id]['gogs']['user']
   group node[id]['gogs']['group']
