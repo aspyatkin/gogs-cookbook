@@ -326,10 +326,9 @@ RUN_AT_START = true
 SCHEDULE = @every 24h
 
 [git]
-MAX_GIT_DIFF_LINES = 10000
-; Arguments for command 'git gc', e.g. "--aggressive --auto"
-; see more on http://git-scm.com/docs/git-gc/1.7.5
-GC_ARGS = 
+MAX_GIT_DIFF_LINES = 30000
+MAX_GIT_DIFF_LINE_CHARACTERS = 1500
+MAX_GIT_DIFF_FILES = 300
 
 ; Operation timeout in seconds
 [git.timeout]
