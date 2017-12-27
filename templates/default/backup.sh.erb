@@ -1,0 +1,19 @@
+#! /usr/bin/env sh
+CURRENT_DIR=`pwd`
+ARCHIVE_NAME=`date +"gogs-backup_%Y-%m-%d.zip"`
+
+cd <%= @user_home %>
+sudo su <%= @user %> -c "<%= @gogs_work_dir %>/gogs backup --verbose --archive-name $ARCHIVE_NAME"
+ARCHIVE_PATH="<%= @user_home %>/$ARCHIVE_NAME"
+
+if [ ! -f "$ARCHIVE_PATH" ]; then
+  echo "An error occured"
+  exit 2
+fi
+
+ARCHIVE_NEW_PATH="$CURRENT_DIR/$ARCHIVE_NAME"
+sudo mv "$ARCHIVE_PATH" "$ARCHIVE_NEW_PATH"
+RUN_USER=`id -un`
+RUN_GROUP=`id -gn`
+sudo chown "$RUN_USER:$RUN_GROUP" "$ARCHIVE_NEW_PATH"
+cd "$CURRENT_DIR"

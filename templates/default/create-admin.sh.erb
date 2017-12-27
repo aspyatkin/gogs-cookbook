@@ -1,0 +1,26 @@
+#! /usr/bin/env sh
+read -p "Username: " GOGS_USERNAME
+
+stty -echo
+printf "Password: "
+read GOGS_PASSWORD
+stty echo
+printf "\n"
+
+stty -echo
+printf "Repeat password: "
+read GOGS_PASSWORD_AGAIN
+stty echo
+printf "\n"
+
+if [ "$GOGS_PASSWORD" != "$GOGS_PASSWORD_AGAIN" ]; then
+  echo "\nPasswords do not match"
+  exit 2
+fi
+
+read -p "Email: " GOGS_EMAIL
+printf "\n"
+
+sudo su <%= @user %> -c " <%= @gogs_work_dir %>/gogs admin create-user --name $GOGS_USERNAME --password $GOGS_PASSWORD --email $GOGS_EMAIL --admin"
+RETVAL=$?
+exit $RETVAL
