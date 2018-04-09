@@ -1,5 +1,6 @@
 id = 'gogs'
 
+instance = ::ChefCookbook::Instance::Helper.new(node)
 secret = ::ChefCookbook::Secret::Helper.new(node)
 
 include_recipe 'database::postgresql'
@@ -209,6 +210,7 @@ template app_ini_path do
     }
   )
   mode 0644
+  sensitive true
   notifies :restart, 'supervisor_service[gogs]', :delayed
   action :create
 end
@@ -300,18 +302,12 @@ nginx_site 'gogs' do
   action :enable
 end
 
-backup_script = ::File.join(node[id]['script_dir'], 'gogs-backup')
-
-template backup_script do
-  source 'backup.sh.erb'
-  owner 'root'
+directory node[id]['script_dir'] do
+  owner instance.root
   group node['root_group']
-  mode 0755
-  variables(
-    user: node[id]['user'],
-    user_home: user_home,
-    gogs_work_dir: gogs_work_dir
-  )
+  mode 0700
+  recursive true
+  action :create
 end
 
 create_admin_script = ::File.join(node[id]['script_dir'], 'gogs-create-admin')
@@ -320,9 +316,35 @@ template create_admin_script do
   source 'create-admin.sh.erb'
   owner 'root'
   group node['root_group']
-  mode 0755
+  mode 0700
   variables(
     user: node[id]['user'],
     gogs_work_dir: gogs_work_dir
   )
+end
+
+backup_enabled = node[id]['backup']['enabled']
+
+s3backup_gogs 'gogs' do
+  gogs_user node[id]['user']
+  gogs_user_home user_home
+  gogs_work_dir gogs_work_dir
+  aws_iam_access_key_id secret.get("aws:iam:#{node[id]['backup']['aws']['iam']['account_alias']}:access_key_id")
+  aws_iam_secret_access_key secret.get("aws:iam:#{node[id]['backup']['aws']['iam']['account_alias']}:secret_access_key")
+  aws_s3_bucket_region node[id]['backup']['aws']['s3']['bucket_region']
+  aws_s3_bucket_name node[id]['backup']['aws']['s3']['bucket_name']
+  schedule(
+    mailto: node[id]['backup']['cron']['mailto'],
+    mailfrom: node[id]['backup']['cron']['mailfrom'],
+    minute: node[id]['backup']['cron']['minute'],
+    hour: node[id]['backup']['cron']['hour'],
+    day: node[id]['backup']['cron']['day'],
+    month: node[id]['backup']['cron']['month'],
+    weekday: node[id]['backup']['cron']['weekday']
+  )
+  if backup_enabled
+    action :create
+  else
+    action :delete
+  end
 end

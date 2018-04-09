@@ -1,7 +1,7 @@
 id = 'gogs'
 
 default[id]['version'] = '0.11.34'
-default[id]['script_dir'] = '/usr/local/bin'
+default[id]['script_dir'] = '/etc/chef-gogs'
 
 default[id]['user'] = 'git'
 default[id]['group'] = 'git'
@@ -40,3 +40,15 @@ default[id]['conf']['admin']['disable_regular_org_creation'] = true
 default[id]['conf']['git']['max_diff_lines'] = 1000
 default[id]['conf']['git']['max_diff_line_characters'] = 500
 default[id]['conf']['git']['max_diff_files'] = 100
+
+default[id]['backup']['enabled'] = false
+default[id]['backup']['aws']['iam']['account_alias'] = 'backup_user'
+default[id]['backup']['aws']['s3']['bucket_region'] = nil
+default[id]['backup']['aws']['s3']['bucket_name'] = nil
+default[id]['backup']['cron']['mailto'] = nil
+default[id]['backup']['cron']['mailfrom'] = nil
+default[id]['backup']['cron']['minute'] = '0'
+default[id]['backup']['cron']['hour'] = '2'
+default[id]['backup']['cron']['day'] = '*'
+default[id]['backup']['cron']['month'] = '*'
+default[id]['backup']['cron']['weekday'] = '*'
