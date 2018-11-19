@@ -2,13 +2,19 @@ resource_name :gogs_app
 
 property :name, String, name_property: true
 
-# tarball
 property :version, String, default: '0.11.66'
 property :checksum, String, default: 'af01103fa4da64811f9139cce221c2d88063cb5d41283df79278a829737dece2'
 property :url, [String, nil], default: nil
 
+property :service_user, String, default: 'git'
+property :service_group, String, default: 'git'
+property :service_log_dir, String, default: '/var/log/gogs'
+property :service_script_dir, String, default: '/usr/local/bin'
+
 property :https, [TrueClass, FalseClass], default: false
 property :ec_certificates, [TrueClass, FalseClass], default: false
+property :hsts_max_age, Integer, default: 15_724_800
+property :hpkp_max_age, Integer, default: 604_800
 
 property :conf, Hash, default: {}
 
@@ -25,24 +31,19 @@ property :redis_db, Integer, default: 0
 default_action :install
 
 action :install do
-  id = 'gogs'
-
-  gogs_user = node[id]['user']
-  gogs_group = node[id]['group']
-
-  group gogs_group do
+  group new_resource.service_group do
     system true
     action :create
   end
 
-  gogs_user_home = ::File.join('/home', gogs_user)
+  service_user_home = ::File.join('/home', new_resource.service_user)
 
-  user gogs_user do
-    group gogs_group
+  user new_resource.service_user do
+    group new_resource.service_group
     shell '/bin/bash'
     system true
     manage_home true
-    home gogs_user_home
+    home service_user_home
     comment 'Gogs'
     action :create
   end
@@ -59,11 +60,9 @@ action :install do
     action :install
   end
 
-  log_dir = node[id]['log_dir']
-
-  directory log_dir do
-    owner gogs_user
-    group gogs_group
+  directory new_resource.service_log_dir do
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
@@ -74,38 +73,38 @@ action :install do
   custom_conf_path = ::File.join(gogs_work_dir, 'custom', 'conf')
 
   directory custom_conf_path do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
   end
 
-  repository_root = ::File.join(gogs_user_home, 'repositories')
+  repository_root = ::File.join(service_user_home, 'repositories')
 
   directory repository_root do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
   end
 
-  ssh_root = ::File.join(gogs_user_home, '.ssh')
+  ssh_root = ::File.join(service_user_home, '.ssh')
 
   directory ssh_root do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0700
     recursive true
     action :create
   end
 
-  data_dir = ::File.join(gogs_user_home, 'data')
+  data_dir = ::File.join(service_user_home, 'data')
 
   directory data_dir do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
@@ -114,8 +113,8 @@ action :install do
   avatar_dir = ::File.join(data_dir, 'avatars')
 
   directory avatar_dir do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
@@ -124,22 +123,22 @@ action :install do
   attachment_dir = ::File.join(data_dir, 'attachments')
 
   directory attachment_dir do
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0755
     recursive true
     action :create
   end
 
-  gogs_secret_file = ::File.join(gogs_user_home, '.gogs_secret')
+  gogs_secret_file = ::File.join(service_user_home, '.gogs_secret')
 
   require 'securerandom'
 
   file gogs_secret_file do
     content ::SecureRandom.hex(32)
     sensitive true
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     mode 0400
     action :create_if_missing
   end
@@ -161,13 +160,13 @@ action :install do
   gogs_port = 3001
 
   template app_ini_path do
-    cookbook id
+    cookbook 'gogs'
     source 'app.ini.erb'
-    owner gogs_user
-    group gogs_group
+    owner new_resource.service_user
+    group new_resource.service_group
     variables(lazy {
       {
-        run_user: gogs_user,
+        run_user: new_resource.service_user,
         run_mode: node.chef_environment.start_with?('development') ? 'dev' : 'prod',
         https: new_resource.https,
         server: {
@@ -233,7 +232,7 @@ action :install do
           path: attachment_dir
         },
         log: {
-          root_path: log_dir
+          root_path: new_resource.service_log_dir
         },
         git: {
           max_diff_lines: git_conf.fetch(:max_diff_lines, 1000),
@@ -261,12 +260,12 @@ action :install do
       },
       Service: {
         Type: 'simple',
-        User: gogs_user,
-        Group: gogs_group,
+        User: new_resource.service_user,
+        Group: new_resource.service_group,
         WorkingDirectory: gogs_work_dir,
         ExecStart: "#{::File.join(gogs_work_dir, 'gogs')} web",
         Restart: 'always',
-        Environment: "USER=#{gogs_user} HOME=#{gogs_user_home}",
+        Environment: "USER=#{new_resource.service_user} HOME=#{service_user_home}",
         ProtectSystem: 'full',
         PrivateDevices: 'yes',
         PrivateTmp: 'yes',
@@ -314,13 +313,13 @@ action :install do
     ngx_vhost_variables.merge!({
       rsa_certificate: tls_rsa_item.certificate_path,
       rsa_certificate_key: tls_rsa_item.certificate_private_key_path,
-      hsts_max_age: node[id]['hsts_max_age'],
+      hsts_max_age: new_resource.hsts_max_age,
       oscp_stapling: node.chef_environment.start_with?('production'),
       scts: has_scts,
       scts_rsa_dir: tls_rsa_item.scts_dir,
       hpkp: node.chef_environment.start_with?('production'),
       hpkp_pins: tls_rsa_item.hpkp_pins,
-      hpkp_max_age: node[id]['hpkp_max_age']
+      hpkp_max_age: new_resource.hpkp_max_age
     })
 
     if new_resource.ec_certificates
@@ -334,22 +333,37 @@ action :install do
   end
 
   nginx_site 'gogs' do
-    cookbook id
+    cookbook 'gogs'
     template 'nginx.conf.erb'
     variables ngx_vhost_variables
     action :enable
   end
 
-  create_admin_script = ::File.join(node[id]['script_dir'], 'gogs-create-admin')
+  node.run_state['gogs'] = {}
 
-  template create_admin_script do
-    cookbook id
+  node.run_state['gogs']['create_admin_script'] = ::File.join(new_resource.service_script_dir, 'gogs-create-admin')
+  template node.run_state['gogs']['create_admin_script'] do
+    cookbook 'gogs'
     source 'create-admin.sh.erb'
     owner 'root'
     group node['root_group']
     mode 0755
     variables(
-      user: gogs_user,
+      user: new_resource.service_user,
+      gogs_work_dir: gogs_work_dir
+    )
+  end
+
+  node.run_state['gogs']['backup_script'] = ::File.join(new_resource.service_script_dir, 'gogs-backup')
+  template node.run_state['gogs']['backup_script'] do
+    cookbook 'gogs'
+    source 'backup.sh.erb'
+    owner 'root'
+    group node['root_group']
+    mode 0755
+    variables(
+      user: new_resource.service_user,
+      user_home: service_user_home,
       gogs_work_dir: gogs_work_dir
     )
   end
