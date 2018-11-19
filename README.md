@@ -3,7 +3,7 @@ Chef cookbook to install [Gogs](https://gogs.io) Git service.
 
 ## Usage
 
-`gogs_app` should be used to install [Gogs](https://gogs.io) Git service.
+`gogs_app` resource should be used to install [Gogs](https://gogs.io) Git service.
 
 ```ruby
 gogs_app 'default' do
