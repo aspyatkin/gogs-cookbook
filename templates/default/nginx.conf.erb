@@ -23,22 +23,12 @@ server {
   server_name <%= @server_name %>;
 
   <% if @https %>
-  <% if @scts %>
-  ssl_ct on;
-  <% end %>
-
   ssl_certificate <%= @rsa_certificate %>;
   ssl_certificate_key <%= @rsa_certificate_key %>;
-  <% if @scts %>
-  ssl_ct_static_scts <%= @scts_rsa_dir %>;
-  <% end %>
 
   <% if @ec_certificate && @ec_certificate_key %>
   ssl_certificate <%= @ec_certificate %>;
   ssl_certificate_key <%= @ec_certificate_key %>;
-  <% if @scts %>
-  ssl_ct_static_scts <%= @scts_ec_dir %>;
-  <% end %>
   <% end %>
 
   add_header Strict-Transport-Security 'max-age=<%= @hsts_max_age %>' always;
@@ -47,11 +37,8 @@ server {
   <% if @oscp_stapling %>
   ssl_stapling on;
   ssl_stapling_verify on;
-  resolver 8.8.8.8 8.8.4.4 valid=300s;
-  <% end %>
-
-  <% if @hpkp && @hpkp_pins.size > 0 %>
-  add_header Public-Key-Pins '<%= @hpkp_pins.map{ |pin| "pin-sha256=\"#{pin}\"" }.join '; ' %>; max-age=<%= @hpkp_max_age %>;' always;
+  resolver <%= @resolvers.join(' ') %> valid=<%= @resolver_valid %>s;
+  resolver_timeout <%= @resolver_timeout %>s;
   <% end %>
   <% end %>
 
@@ -67,7 +54,6 @@ server {
   proxy_read_timeout 30s;
   proxy_send_timeout 30s;
   send_timeout 60s;
-  resolver_timeout 5s;
   client_body_timeout 60s;
 
   client_max_body_size 100m;

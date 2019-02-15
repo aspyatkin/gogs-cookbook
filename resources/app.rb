@@ -2,9 +2,9 @@ resource_name :gogs_app
 
 property :name, String, name_property: true
 
-property :version, String, default: '0.11.66'
-property :checksum, String, default: 'af01103fa4da64811f9139cce221c2d88063cb5d41283df79278a829737dece2'
-property :url, [String, nil], default: nil
+property :version, String, default: '0.11.86'
+property :checksum, String, default: '01432f903e7e91aa54f7b78faf1167462da0e7b26c7f1055247a76a814688bfc'
+property :url, String, default: 'https://dl.gogs.io/%{version}/gogs_%{version}_linux_amd64.tar.gz'
 
 property :service_user, String, default: 'git'
 property :service_group, String, default: 'git'
@@ -12,9 +12,11 @@ property :service_log_dir, String, default: '/var/log/gogs'
 property :service_script_dir, String, default: '/usr/local/bin'
 
 property :https, [TrueClass, FalseClass], default: false
-property :ec_certificates, [TrueClass, FalseClass], default: false
 property :hsts_max_age, Integer, default: 15_724_800
-property :hpkp_max_age, Integer, default: 604_800
+property :oscp_stapling, [TrueClass, FalseClass], default: true
+property :resolvers, Array, default: %w(8.8.8.8 1.1.1.1 8.8.4.4 1.0.0.1)
+property :resolver_valid, Integer, default: 600
+property :resolver_timeout, Integer, default: 10
 
 property :conf, Hash, default: {}
 
@@ -48,13 +50,8 @@ action :install do
     action :create
   end
 
-  download_url = new_resource.url
-  if download_url.nil?
-    download_url = "https://dl.gogs.io/#{new_resource.version}/gogs_#{new_resource.version}_linux_amd64.tar.gz"
-  end
-
   ark 'gogs' do
-    url download_url
+    url new_resource.url % {version: new_resource.version}
     version new_resource.version
     checksum new_resource.checksum
     action :install
@@ -297,37 +294,32 @@ action :install do
       action :deploy
     end
 
-    tls_rsa_item = ::ChefCookbook::TLS.new(node).rsa_certificate_entry(gogs_fqdn)
+    tls_helper = ::ChefCookbook::TLS.new(node)
+    tls_rsa_item = tls_helper.rsa_certificate_entry(gogs_fqdn)
     tls_ec_item = nil
 
-    if new_resource.ec_certificates
+    if tls_helper.has_ec_certificate?(gogs_fqdn)
       tls_ec_certificate gogs_fqdn do
         action :deploy
       end
 
-      tls_ec_item = ::ChefCookbook::TLS.new(node).ec_certificate_entry(gogs_fqdn)
+      tls_ec_item = tls_helper.ec_certificate_entry(gogs_fqdn)
     end
-
-    has_scts = tls_rsa_item.has_scts? && (tls_ec_item.nil? ? true : tls_ec_item.has_scts?)
 
     ngx_vhost_variables.merge!({
       rsa_certificate: tls_rsa_item.certificate_path,
       rsa_certificate_key: tls_rsa_item.certificate_private_key_path,
       hsts_max_age: new_resource.hsts_max_age,
-      oscp_stapling: node.chef_environment.start_with?('production'),
-      scts: has_scts,
-      scts_rsa_dir: tls_rsa_item.scts_dir,
-      hpkp: node.chef_environment.start_with?('production'),
-      hpkp_pins: tls_rsa_item.hpkp_pins,
-      hpkp_max_age: new_resource.hpkp_max_age
+      oscp_stapling: new_resource.oscp_stapling,
+      resolvers: new_resource.resolvers,
+      resolver_valid: new_resource.resolver_valid,
+      resolver_timeout: new_resource.resolver_timeout
     })
 
-    if new_resource.ec_certificates
+    if tls_helper.has_ec_certificate?(gogs_fqdn)
       ngx_vhost_variables.merge!({
         ec_certificate: tls_ec_item.certificate_path,
-        ec_certificate_key: tls_ec_item.certificate_private_key_path,
-        scts_ec_dir: tls_ec_item.scts_dir,
-        hpkp_pins: (ngx_vhost_variables[:hpkp_pins] + tls_ec_item.hpkp_pins).uniq,
+        ec_certificate_key: tls_ec_item.certificate_private_key_path
       })
     end
   end
