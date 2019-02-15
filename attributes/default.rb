@@ -1,6 +1,7 @@
 id = 'gogs'
 
-default[id]['version'] = '0.11.34'
+default[id]['version'] = '0.11.86'
+default[id]['url'] = 'https://dl.gogs.io/%{version}/gogs_%{version}_linux_amd64.tar.gz'
 default[id]['script_dir'] = '/etc/chef-gogs'
 
 default[id]['user'] = 'git'

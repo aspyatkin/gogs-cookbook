@@ -45,7 +45,7 @@ user node[id]['user'] do
 end
 
 ark 'gogs' do
-  url "https://cdn.gogs.io/#{node[id]['version']}/linux_amd64.tar.gz"
+  url node[id]['url'] % {version: node[id]['version']}
   version node[id]['version']
   action :install
 end
