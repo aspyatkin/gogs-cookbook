@@ -7,10 +7,10 @@ RUN_MODE = <%= @run_mode %>
 
 [server]
 PROTOCOL = http
-DOMAIN = <%= @web[:fqdn] %>
-ROOT_URL = %(PROTOCOL)s<%= @web[:ssl] ? 's' : '' %>://%(DOMAIN)s/
-HTTP_ADDR = 127.0.0.1
-HTTP_PORT = 3000
+DOMAIN = <%= @server[:domain] %>
+ROOT_URL = %(PROTOCOL)s<%= @https ? 's' : '' %>://%(DOMAIN)s/
+HTTP_ADDR = <%= @server[:http_addr] %>
+HTTP_PORT = <%= @server[:http_port] %>
 ; Permission for unix socket
 UNIX_SOCKET_PERMISSION = 666
 ; Local (DMZ) URL for Gogs workers (such as SSH update) accessing web service.
@@ -162,7 +162,7 @@ DB_TYPE = <%= @database[:db_type] %>
 HOST = <%= @database[:host] %>:<%= @database[:port] %>
 NAME = <%= @database[:name] %>
 USER = <%= @database[:user] %>
-PASSWD = `<%= @database[:password] %>`
+PASSWD = `<%= @database[:passwd] %>`
 ; For "postgres" only, either "disable", "require" or "verify-full"
 SSL_MODE = disable
 ; For "sqlite3" and "tidb", use absolute path when you start as service
@@ -180,7 +180,7 @@ SECRET_KEY = <%= @security[:secret_key] %>
 LOGIN_REMEMBER_DAYS = 7
 COOKIE_USERNAME = gogs
 COOKIE_REMEMBER_NAME = gogs_remember
-COOKIE_SECURE = <%= @web[:ssl] %>
+COOKIE_SECURE = <%= @https %>
 ; Reverse proxy authentication header name of user name
 REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
 ; Enable to set cookie to indicate user login status
@@ -241,7 +241,7 @@ KEY_FILE = custom/mailer/key.pem
 FROM = <%= @mailer[:enabled] ? "#{@mailer[:from]}": '' %>
 ; Mailer user name and password
 USER = <%= @mailer[:enabled] ? "#{@mailer[:user]}": '' %>
-PASSWD = <%= @mailer[:enabled] ? "`#{@mailer[:password]}`" : '' %>
+PASSWD = <%= @mailer[:enabled] ? "`#{@mailer[:passwd]}`" : '' %>
 ; Use text/plain as format of content
 USE_PLAIN_TEXT = false
 
@@ -267,7 +267,7 @@ PROVIDER_CONFIG = <%= @session[:provider_config] %>
 ; Session cookie name
 COOKIE_NAME = i_like_gogits
 ; If you use session in https only, default is false
-COOKIE_SECURE = <%= @web[:ssl] %>
+COOKIE_SECURE = <%= @https %>
 ; Enable set cookie, default is true
 ENABLE_SET_COOKIE = true
 ; Session GC time interval, default is 3600
