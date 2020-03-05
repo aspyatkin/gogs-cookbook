@@ -1,38 +1,27 @@
 upstream gogs {
-  server <%= @gogs_host %>:<%= @gogs_port %>;
+  server <%= @upstream_host %>:<%= @upstream_port %>;
 }
 
-<% if @https %>
+<% if @secure %>
 server {
   listen 80;
 
-  server_name <%= @server_name %>;
+  server_name <%= @fqdn %>;
 
   location / {
-    return 301 https://<%= @server_name %>$request_uri;
+    return 301 https://<%= @fqdn %>$request_uri;
   }
 }
 <% end %>
 
 server {
-  <% if @https %>
+  <% if @secure %>
   listen 443 ssl http2;
-  <% else %>
-  listen 80;
+
+  <% @certificate_entries.each do |item| %>
+  ssl_certificate <%= item.certificate_path %>; # CRC32: <%= item.certificate_checksum %>
+  ssl_certificate_key <%= item.certificate_private_key_path %>; # CRC32: <%= item.certificate_private_key_checksum %>
   <% end %>
-  server_name <%= @server_name %>;
-
-  <% if @https %>
-  ssl_certificate <%= @rsa_certificate %>;
-  ssl_certificate_key <%= @rsa_certificate_key %>;
-
-  <% if @ec_certificate && @ec_certificate_key %>
-  ssl_certificate <%= @ec_certificate %>;
-  ssl_certificate_key <%= @ec_certificate_key %>;
-  <% end %>
-
-  add_header Strict-Transport-Security 'max-age=<%= @hsts_max_age %>' always;
-  add_header X-Frame-Options DENY always;
 
   <% if @oscp_stapling %>
   ssl_stapling on;
@@ -40,7 +29,10 @@ server {
   resolver <%= @resolvers.join(' ') %> valid=<%= @resolver_valid %>s;
   resolver_timeout <%= @resolver_timeout %>s;
   <% end %>
+  <% else %>
+  listen 80;
   <% end %>
+  server_name <%= @fqdn %>;
 
   charset utf-8;
   access_log <%= @access_log %> combined;
@@ -61,5 +53,9 @@ server {
 
   location / {
     proxy_pass http://gogs/;
+    <% if @secure %>
+    add_header Strict-Transport-Security 'max-age=<%= @hsts_max_age %>' always;
+    add_header X-Frame-Options DENY always;
+    <% end %>
   }
 }

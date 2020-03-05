@@ -2,8 +2,8 @@ resource_name :gogs_app
 
 property :name, String, name_property: true
 
-property :version, String, default: '0.11.86'
-property :checksum, String, default: '01432f903e7e91aa54f7b78faf1167462da0e7b26c7f1055247a76a814688bfc'
+property :version, String, default: '0.11.91'
+property :checksum, String, default: '56e03b8c83387a2a3ae4e3b46e8846f3b1ba785a743b33e682024bac746bf4d8'
 property :url, String, default: 'https://dl.gogs.io/%{version}/gogs_%{version}_linux_amd64.tar.gz'
 
 property :service_user, String, default: 'git'
@@ -11,12 +11,17 @@ property :service_group, String, default: 'git'
 property :service_log_dir, String, default: '/var/log/gogs'
 property :service_script_dir, String, default: '/usr/local/bin'
 
-property :https, [TrueClass, FalseClass], default: false
+property :service_host, String, default: '127.0.0.1'
+property :service_port, Integer, default: 3000
+
+property :secure, [TrueClass, FalseClass], default: false
 property :hsts_max_age, Integer, default: 15_724_800
 property :oscp_stapling, [TrueClass, FalseClass], default: true
 property :resolvers, Array, default: %w(8.8.8.8 1.1.1.1 8.8.4.4 1.0.0.1)
 property :resolver_valid, Integer, default: 600
 property :resolver_timeout, Integer, default: 10
+property :access_log_options, String, default: 'combined'
+property :error_log_options, String, default: 'error'
 
 property :conf, Hash, default: {}
 
@@ -28,7 +33,7 @@ property :postgres_password, String, required: true
 
 property :redis_host, String, required: true
 property :redis_port, Integer, required: true
-property :redis_db, Integer, default: 0
+property :redis_db, Integer, default: 1
 
 default_action :install
 
@@ -144,17 +149,15 @@ action :install do
 
   app_ini_path = ::File.join(custom_conf_path, 'app.ini')
 
-  server_conf = new_resource.conf.fetch(:server, {})
-  gogs_fqdn = server_conf.fetch(:domain, instance.fqdn)
+  server_conf = new_resource.conf.fetch('server', {})
+  gogs_fqdn = server_conf.fetch('domain', instance.fqdn)
 
-  repository_conf = new_resource.conf.fetch(:repository, {})
-  admin_conf = new_resource.conf.fetch(:admin, {})
-  service_conf = new_resource.conf.fetch(:service, {})
-  mailer_conf = new_resource.conf.fetch(:mailer, {})
-  git_conf = new_resource.conf.fetch(:git, {})
-
-  gogs_host = '127.0.0.1'
-  gogs_port = 3001
+  repository_conf = new_resource.conf.fetch('repository', {})
+  admin_conf = new_resource.conf.fetch('admin', {})
+  service_conf = new_resource.conf.fetch('service', {})
+  mailer_conf = new_resource.conf.fetch('mailer', {})
+  cron_conf = new_resource.conf.fetch('cron', {})
+  git_conf = new_resource.conf.fetch('git', {})
 
   template app_ini_path do
     cookbook 'gogs'
@@ -163,78 +166,83 @@ action :install do
     group new_resource.service_group
     variables(lazy {
       {
-        run_user: new_resource.service_user,
-        run_mode: node.chef_environment.start_with?('development') ? 'dev' : 'prod',
-        https: new_resource.https,
-        server: {
-          http_addr: gogs_host,
-          http_port: gogs_port,
-          domain: gogs_fqdn,
-          ssh_root_path: ssh_root,
-          minimum_key_size_check: server_conf.fetch(:minimum_key_size_check, true),
-          app_data_path: data_dir
+        'run_user' => new_resource.service_user,
+        'run_mode' => node.chef_environment.start_with?('development') ? 'dev' : 'prod',
+        'https' => new_resource.secure,
+        'server' => {
+          'http_addr' => new_resource.service_host,
+          'http_port' => new_resource.service_port,
+          'domain' => gogs_fqdn,
+          'ssh_root_path' => ssh_root,
+          'minimum_key_size_check' => server_conf.fetch('minimum_key_size_check', true),
+          'app_data_path' => data_dir
         },
-        repository: {
-          root: repository_root,
-          force_private: repository_conf.fetch(:force_private, true)
+        'repository' => {
+          'root' => repository_root,
+          'force_private' => repository_conf.fetch('force_private', true)
         },
-        database: {
-          db_type: 'postgres',
-          host: new_resource.postgres_host,
-          port: new_resource.postgres_port,
-          name: new_resource.postgres_database,
-          user: new_resource.postgres_user,
-          passwd: new_resource.postgres_password
+        'database' => {
+          'db_type' => 'postgres',
+          'host' => new_resource.postgres_host,
+          'port' => new_resource.postgres_port,
+          'name' => new_resource.postgres_database,
+          'user' => new_resource.postgres_user,
+          'passwd' => new_resource.postgres_password
         },
-        admin: {
-          disable_regular_org_creation: admin_conf.fetch(:disable_regular_org_creation, true)
+        'admin' => {
+          'disable_regular_org_creation' => admin_conf.fetch('disable_regular_org_creation', true)
         },
-        security: {
-          install_lock: true,
-          secret_key: ::File.read(gogs_secret_file)
+        'security' => {
+          'install_lock' => true,
+          'secret_key' => ::File.read(gogs_secret_file)
         },
-        service: {
-          register_email_confirm: service_conf.fetch(:register_email_confirm, true),
-          disable_registration: service_conf.fetch(:disable_registration, true),
-          require_signin_view: service_conf.fetch(:require_signin_view, true),
-          enable_notify_mail: service_conf.fetch(:enable_notify_mail, true)
+        'service' => {
+          'register_email_confirm' => service_conf.fetch('register_email_confirm', true),
+          'disable_registration' => service_conf.fetch('disable_registration', true),
+          'require_signin_view' => service_conf.fetch('require_signin_view', true),
+          'enable_notify_mail' => service_conf.fetch('enable_notify_mail', true)
         },
-        mailer: {
-          enabled: mailer_conf.fetch(:enabled, false),
-          host: mailer_conf.fetch(:host, nil),
-          port: mailer_conf.fetch(:port, nil),
-          user: mailer_conf.fetch(:user, nil),
-          passwd: mailer_conf.fetch(:passwd, nil),
-          from: mailer_conf.fetch(:from, nil)
+        'mailer' => {
+          'enabled' => mailer_conf.fetch('enabled', false),
+          'host' => mailer_conf.fetch('host', nil),
+          'port' => mailer_conf.fetch('port', nil),
+          'user' => mailer_conf.fetch('user', nil),
+          'passwd' => mailer_conf.fetch('passwd', nil),
+          'from' => mailer_conf.fetch('from', nil)
         },
-        cache: {
-          adapter: 'redis',
-          host: "network=tcp,addr=#{new_resource.redis_host}:"\
-                "#{new_resource.redis_port},db="\
-                "#{new_resource.redis_db},"\
-                'pool_size=100,idle_timeout=180'
+        'cache' => {
+          'adapter' => 'redis',
+          'host' => "network=tcp,addr=#{new_resource.redis_host}:"\
+                    "#{new_resource.redis_port},db="\
+                    "#{new_resource.redis_db},"\
+                    'pool_size=100,idle_timeout=180'
         },
-        session: {
-          provider: 'redis',
-          provider_config: 'network=tcp,addr='\
-                           "#{new_resource.redis_host}:"\
-                           "#{new_resource.redis_port},db="\
-                           "#{new_resource.redis_db},"\
-                           'pool_size=100,idle_timeout=180'
+        'session' => {
+          'provider' => 'redis',
+          'provider_config' => 'network=tcp,addr='\
+                               "#{new_resource.redis_host}:"\
+                               "#{new_resource.redis_port},db="\
+                               "#{new_resource.redis_db},"\
+                               'pool_size=100,idle_timeout=180'
         },
-        picture: {
-          avatar_upload_path: avatar_dir
+        'picture' => {
+          'avatar_upload_path' => avatar_dir
         },
-        attachment: {
-          path: attachment_dir
+        'attachment' => {
+          'path' => attachment_dir
         },
-        log: {
-          root_path: new_resource.service_log_dir
+        'log' => {
+          'root_path' => new_resource.service_log_dir
         },
-        git: {
-          max_diff_lines: git_conf.fetch(:max_diff_lines, 1000),
-          max_diff_line_characters: git_conf.fetch(:max_diff_line_characters, 500),
-          max_diff_files: git_conf.fetch(:max_diff_files, 100)
+        'cron' => {
+          'repo_health_check' => {
+            'timeout' => cron_conf.fetch('repo_health_check', {}).fetch('timeout', '60s')
+          }
+        },
+        'git' => {
+          'max_diff_lines' => git_conf.fetch('max_diff_lines', 1000),
+          'max_diff_line_characters' => git_conf.fetch('max_diff_line_characters', 500),
+          'max_diff_files' => git_conf.fetch('max_diff_files', 100)
         }
       }
     })
@@ -252,7 +260,7 @@ action :install do
           'syslog.target',
           'network.target',
           'postgresql.service',
-          'redis@6379.service'
+          "redis@#{new_resource.redis_port}.service"
         ],
       },
       Service: {
@@ -281,34 +289,31 @@ action :install do
   end
 
   ngx_vhost_variables = {
-    server_name: gogs_fqdn,
-    access_log: ::File.join(node['nginx']['log_dir'], 'gogs_access.log'),
-    error_log: ::File.join(node['nginx']['log_dir'], 'gogs_error.log'),
-    gogs_host: gogs_host,
-    gogs_port: gogs_port,
-    https: new_resource.https,
+    fqdn: gogs_fqdn,
+    access_log_options: new_resource.access_log_options,
+    error_log_options: new_resource.error_log_options,
+    upstream_host: new_resource.service_host,
+    upstream_port: new_resource.service_port,
+    secure: new_resource.secure,
   }
 
-  if new_resource.https
+  if new_resource.secure
     tls_rsa_certificate gogs_fqdn do
       action :deploy
     end
 
-    tls_helper = ::ChefCookbook::TLS.new(node)
-    tls_rsa_item = tls_helper.rsa_certificate_entry(gogs_fqdn)
-    tls_ec_item = nil
+    tls = ::ChefCookbook::TLS.new(node)
 
-    if tls_helper.has_ec_certificate?(gogs_fqdn)
+    if tls.has_ec_certificate?(gogs_fqdn)
       tls_ec_certificate gogs_fqdn do
         action :deploy
       end
-
-      tls_ec_item = tls_helper.ec_certificate_entry(gogs_fqdn)
     end
 
     ngx_vhost_variables.merge!({
-      rsa_certificate: tls_rsa_item.certificate_path,
-      rsa_certificate_key: tls_rsa_item.certificate_private_key_path,
+      certificate_entries: [
+        tls.rsa_certificate_entry(gogs_fqdn)
+      ],
       hsts_max_age: new_resource.hsts_max_age,
       oscp_stapling: new_resource.oscp_stapling,
       resolvers: new_resource.resolvers,
@@ -316,18 +321,26 @@ action :install do
       resolver_timeout: new_resource.resolver_timeout
     })
 
-    if tls_helper.has_ec_certificate?(gogs_fqdn)
-      ngx_vhost_variables.merge!({
-        ec_certificate: tls_ec_item.certificate_path,
-        ec_certificate_key: tls_ec_item.certificate_private_key_path
-      })
+    if tls.has_ec_certificate?(gogs_fqdn)
+      ngx_vhost_variables[:certificate_entries] << tls.ec_certificate_entry(gogs_fqdn)
     end
   end
 
-  nginx_site 'gogs' do
+  nginx_vhost 'gogs' do
     cookbook 'gogs'
     template 'nginx.conf.erb'
-    variables ngx_vhost_variables
+    variables(lazy {
+      ngx_vhost_variables.merge(
+        access_log: ::File.join(
+          node.run_state['nginx']['log_dir'],
+          'gogs_access.log'
+        ),
+        error_log: ::File.join(
+          node.run_state['nginx']['log_dir'],
+          'gogs_error.log'
+        )
+      )
+    })
     action :enable
   end
 

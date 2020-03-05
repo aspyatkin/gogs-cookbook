@@ -14,18 +14,18 @@ gogs_app 'default' do
   postgres_password 'TOPSECRET'
   redis_host '127.0.0.1'
   redis_port 6379
-  https true
+  secure true
   conf(
-    server: {
-      domain: 'git.example'
+    'server' => {
+      'fqdn' => 'git.example'
     },
-    mailer: {
-      enabled: true,
-      host: mx.example,
-      port: 587,
-      user: 'admin@git.example',
-      passwd: 'TOPSECRET',
-      from: 'Gogs <admin@git.example>'
+    'mailer' => {
+      'enabled' => true,
+      'host' => mx.example,
+      'port' => 587,
+      'user' => 'admin@git.example',
+      'passwd' => 'TOPSECRET',
+      'from' => 'Gogs <admin@git.example>'
     }
   )
   action :install

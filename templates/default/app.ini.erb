@@ -7,10 +7,10 @@ RUN_MODE = <%= @run_mode %>
 
 [server]
 PROTOCOL = http
-DOMAIN = <%= @server[:domain] %>
+DOMAIN = <%= @server['domain'] %>
 ROOT_URL = %(PROTOCOL)s<%= @https ? 's' : '' %>://%(DOMAIN)s/
-HTTP_ADDR = <%= @server[:http_addr] %>
-HTTP_PORT = <%= @server[:http_port] %>
+HTTP_ADDR = <%= @server['http_addr'] %>
+HTTP_PORT = <%= @server['http_port'] %>
 ; Permission for unix socket
 UNIX_SOCKET_PERMISSION = 666
 ; Local (DMZ) URL for Gogs workers (such as SSH update) accessing web service.
@@ -30,7 +30,7 @@ SSH_LISTEN_HOST = 0.0.0.0
 ; Port number builtin SSH server listens on
 SSH_LISTEN_PORT = %(SSH_PORT)s
 ; Root path of SSH directory, default is '~/.ssh', but you have to use '/home/git/.ssh'.
-SSH_ROOT_PATH = <%= @server[:ssh_root_path] %>
+SSH_ROOT_PATH = <%= @server['ssh_root_path'] %>
 ; Choose the ciphers to support for SSH connections
 SSH_SERVER_CIPHERS = aes128-ctr, aes192-ctr, aes256-ctr, aes128-gcm@openssh.com, arcfour256, arcfour128
 ; Directory to create temporary files when test publick key using ssh-keygen,
@@ -39,7 +39,7 @@ SSH_KEY_TEST_PATH =
 ; Path to ssh-keygen, default is 'ssh-keygen' and let shell find out which one to call.
 SSH_KEYGEN_PATH = ssh-keygen
 ; Indicate whether to check minimum key size with corresponding type
-MINIMUM_KEY_SIZE_CHECK = <%= @server[:minimum_key_size_check] %>
+MINIMUM_KEY_SIZE_CHECK = <%= @server['minimum_key_size_check'] %>
 ; Disable CDN even in "prod" mode
 OFFLINE_MODE = false
 DISABLE_ROUTER_LOG = false
@@ -59,7 +59,7 @@ TLS_MIN_VERSION = TLS10
 ; default is the path where Gogs is executed
 STATIC_ROOT_PATH =
 ; Default path for App data
-APP_DATA_PATH = <%= @server[:app_data_path] %>
+APP_DATA_PATH = <%= @server['app_data_path'] %>
 ; Application level GZIP support
 ENABLE_GZIP = false
 ; Landing page for non-logged users, can be "home" or "explore"
@@ -67,13 +67,13 @@ LANDING_PAGE = home
 
 [repository]
 ; Root path for storing repositories's data, default is "~/<username>/gogs-repositories"
-ROOT = <%= @repository[:root] %>
+ROOT = <%= @repository['root'] %>
 ; The script type server supports, sometimes could be "sh"
 SCRIPT_TYPE = bash
 ; Default ANSI charset for an unrecognized charset
 ANSI_CHARSET =
 ; Force every new repository to be private
-FORCE_PRIVATE = <%= @repository[:force_private] %>
+FORCE_PRIVATE = <%= @repository['force_private'] %>
 ; Global maximum creation limit of repository per user, -1 means no limit
 MAX_CREATION_LIMIT = -1
 ; Mirror sync queue length, increase if mirror syncing starts hanging
@@ -152,17 +152,17 @@ ACCESS_CONTROL_ALLOW_ORIGIN =
 ; Define allowed algorithms and their minimum key length (use -1 to disable a type)
 [ssh.minimum_key_sizes]
 ED25519 = 256
-ECDSA = 256
+ECDSA = -1
 RSA = 2048
-DSA = 1024
+DSA = -1
 
 [database]
 ; Either "mysql", "postgres" or "sqlite3", you can connect to TiDB with MySQL protocol
-DB_TYPE = <%= @database[:db_type] %>
-HOST = <%= @database[:host] %>:<%= @database[:port] %>
-NAME = <%= @database[:name] %>
-USER = <%= @database[:user] %>
-PASSWD = `<%= @database[:passwd] %>`
+DB_TYPE = <%= @database['db_type'] %>
+HOST = <%= @database['host'] %>:<%= @database['port'] %>
+NAME = <%= @database['name'] %>
+USER = <%= @database['user'] %>
+PASSWD = `<%= @database['passwd'] %>`
 ; For "postgres" only, either "disable", "require" or "verify-full"
 SSL_MODE = disable
 ; For "sqlite3" and "tidb", use absolute path when you start as service
@@ -170,12 +170,12 @@ PATH = data/gogs.db
 
 [admin]
 ; Disable regular (non-admin) users to create organizations
-DISABLE_REGULAR_ORG_CREATION = <%= @admin[:disable_regular_org_creation] %>
+DISABLE_REGULAR_ORG_CREATION = <%= @admin['disable_regular_org_creation'] %>
 
 [security]
-INSTALL_LOCK = <%= @security[:install_lock] %>
+INSTALL_LOCK = <%= @security['install_lock'] %>
 ; !!CHANGE THIS TO KEEP YOUR USER DATA SAFE!!
-SECRET_KEY = <%= @security[:secret_key] %>
+SECRET_KEY = <%= @security['secret_key'] %>
 ; Auto-login remember days
 LOGIN_REMEMBER_DAYS = 7
 COOKIE_USERNAME = gogs
@@ -191,13 +191,13 @@ LOGIN_STATUS_COOKIE_NAME = login_status
 ACTIVE_CODE_LIVE_MINUTES = 180
 RESET_PASSWD_CODE_LIVE_MINUTES = 180
 ; User need to confirm e-mail for registration
-REGISTER_EMAIL_CONFIRM = <%= @service[:register_email_confirm] %>
+REGISTER_EMAIL_CONFIRM = <%= @service['register_email_confirm'] %>
 ; Does not allow register and admin create account only
-DISABLE_REGISTRATION = <%= @service[:disable_registration] %>
+DISABLE_REGISTRATION = <%= @service['disable_registration'] %>
 ; User must sign in to view anything.
-REQUIRE_SIGNIN_VIEW = <%= @service[:require_signin_view] %>
+REQUIRE_SIGNIN_VIEW = <%= @service['require_signin_view'] %>
 ; Mail notification
-ENABLE_NOTIFY_MAIL = <%= @service[:enable_notify_mail] %>
+ENABLE_NOTIFY_MAIL = <%= @service['enable_notify_mail'] %>
 ; More detail: https://github.com/gogits/gogs/issues/165
 ENABLE_REVERSE_PROXY_AUTHENTICATION = false
 ENABLE_REVERSE_PROXY_AUTO_REGISTRATION = false
@@ -217,7 +217,7 @@ SKIP_TLS_VERIFY = false
 PAGING_NUM = 10
 
 [mailer]
-ENABLED = <%= @mailer[:enabled] %>
+ENABLED = <%= @mailer['enabled'] %>
 ; Buffer length of channel, keep it as it is if you don't know what it is.
 SEND_BUFFER_LEN = 100
 ; Name displayed in mail title
@@ -226,7 +226,7 @@ SUBJECT = %(APP_NAME)s
 ; Gmail: smtp.gmail.com:587
 ; QQ: smtp.qq.com:465
 ; Note, if the port ends with "465", SMTPS will be used. Using STARTTLS on port 587 is recommended per RFC 6409. If the server supports STARTTLS it will always be used.
-HOST = <%= @mailer[:enabled] ? "#{@mailer[:host]}:#{@mailer[:port]}" : '' %>
+HOST = <%= @mailer['enabled'] ? "#{@mailer['host']}:#{@mailer['port']}" : '' %>
 ; Disable HELO operation when hostname are different.
 DISABLE_HELO =
 ; Custom hostname for HELO operation, default is from system.
@@ -238,32 +238,32 @@ USE_CERTIFICATE = false
 CERT_FILE = custom/mailer/cert.pem
 KEY_FILE = custom/mailer/key.pem
 ; Mail from address, RFC 5322. This can be just an email address, or the `"Name" <email@example.com>` format
-FROM = <%= @mailer[:enabled] ? "#{@mailer[:from]}": '' %>
+FROM = <%= @mailer['enabled'] ? "#{@mailer['from']}": '' %>
 ; Mailer user name and password
-USER = <%= @mailer[:enabled] ? "#{@mailer[:user]}": '' %>
-PASSWD = <%= @mailer[:enabled] ? "`#{@mailer[:passwd]}`" : '' %>
+USER = <%= @mailer['enabled'] ? "#{@mailer['user']}": '' %>
+PASSWD = <%= @mailer['enabled'] ? "`#{@mailer['passwd']}`" : '' %>
 ; Use text/plain as format of content
 USE_PLAIN_TEXT = false
 
 [cache]
 ; Either "memory", "redis", or "memcache", default is "memory"
-ADAPTER = <%= @cache[:adapter] %>
+ADAPTER = <%= @cache['adapter'] %>
 ; For "memory" only, GC interval in seconds, default is 60
 INTERVAL = 60
 ; For "redis" and "memcache", connection host address
 ; redis: network=tcp,addr=:6379,password=macaron,db=0,pool_size=100,idle_timeout=180
 ; memcache: `127.0.0.1:11211`
-HOST = <%= @cache[:host] %>
+HOST = <%= @cache['host'] %>
 
 [session]
 ; Either "memory", "file", or "redis", default is "memory"
-PROVIDER = <%= @session[:provider] %>
+PROVIDER = <%= @session['provider'] %>
 ; Provider config options
 ; memory: not have any config yet
 ; file: session file path, e.g. `data/sessions`
 ; redis: network=tcp,addr=:6379,password=macaron,db=0,pool_size=100,idle_timeout=180
 ; mysql: go-sql-driver/mysql dsn config string, e.g. `root:password@/session_table`
-PROVIDER_CONFIG = <%= @session[:provider_config] %>
+PROVIDER_CONFIG = <%= @session['provider_config'] %>
 ; Session cookie name
 COOKIE_NAME = i_like_gogits
 ; If you use session in https only, default is false
@@ -279,7 +279,7 @@ CSRF_COOKIE_NAME = _csrf
 
 [picture]
 ; Path to store user uploaded avatars
-AVATAR_UPLOAD_PATH = <%= @picture[:avatar_upload_path] %>
+AVATAR_UPLOAD_PATH = <%= @picture['avatar_upload_path'] %>
 ; Chinese users can choose "duoshuo"
 ; or a custom avatar source, like: http://cn.gravatar.com/avatar/
 GRAVATAR_SOURCE = gravatar
@@ -295,7 +295,7 @@ ENABLE_FEDERATED_AVATAR = true
 ; Whether attachments are enabled. Defaults to `true`
 ENABLED = true
 ; Path for attachments. Defaults to `data/attachments`
-PATH = <%= @attachment[:path] %>
+PATH = <%= @attachment['path'] %>
 ; One or more allowed types, e.g. image/jpeg|image/png
 ALLOWED_TYPES = image/jpeg|image/png
 ; Max size of each file. Defaults to 4MB
@@ -311,7 +311,7 @@ FORMAT =
 
 ; General settings of loggers
 [log]
-ROOT_PATH = <%= @log[:root_path] %>
+ROOT_PATH = <%= @log['root_path'] %>
 ; Can be "console" and "file", default is "console"
 ; Use comma to separate multiple modes, e.g. "console, file"
 MODE = console
@@ -370,7 +370,7 @@ SCHEDULE = @every 10m
 ; Repository health check
 [cron.repo_health_check]
 SCHEDULE = @every 24h
-TIMEOUT = 60s
+TIMEOUT = <%= @cron['repo_health_check']['timeout'] %>
 ; Arguments for command 'git fsck', e.g. "--unreachable --tags"
 ; see more on http://git-scm.com/docs/git-fsck/1.7.5
 ARGS =
@@ -391,11 +391,11 @@ OLDER_THAN = 24h
 ; Disables highlight of added and removed changes
 DISABLE_DIFF_HIGHLIGHT = false
 ; Max number of lines allowed of a single file in diff view
-MAX_GIT_DIFF_LINES = <%= @git[:max_diff_lines] %>
+MAX_GIT_DIFF_LINES = <%= @git['max_diff_lines'] %>
 ; Max number of characters of a line allowed in diff view
-MAX_GIT_DIFF_LINE_CHARACTERS = <%= @git[:max_diff_line_characters] %>
+MAX_GIT_DIFF_LINE_CHARACTERS = <%= @git['max_diff_line_characters'] %>
 ; Max number of files shown in diff view
-MAX_GIT_DIFF_FILES = <%= @git[:max_diff_files] %>
+MAX_GIT_DIFF_FILES = <%= @git['max_diff_files'] %>
 ; Arguments for command 'git gc', e.g. "--aggressive --auto"
 ; see more on http://git-scm.com/docs/git-gc/1.7.5
 GC_ARGS =
