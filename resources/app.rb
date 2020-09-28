@@ -35,6 +35,8 @@ property :redis_host, String, required: true
 property :redis_port, Integer, required: true
 property :redis_db, Integer, default: 1
 
+property :vlt_provider, Proc, default: lambda { nil }
+
 default_action :install
 
 action :install do
@@ -299,13 +301,15 @@ action :install do
 
   if new_resource.secure
     tls_rsa_certificate gogs_fqdn do
+      vlt_provider new_resource.vlt_provider
       action :deploy
     end
 
-    tls = ::ChefCookbook::TLS.new(node)
+    tls = ::ChefCookbook::TLS.new(node, vlt_provider: new_resource.vlt_provider)
 
     if tls.has_ec_certificate?(gogs_fqdn)
       tls_ec_certificate gogs_fqdn do
+        vlt_provider new_resource.vlt_provider
         action :deploy
       end
     end
