@@ -36,6 +36,7 @@ property :redis_port, Integer, required: true
 property :redis_db, Integer, default: 1
 
 property :vlt_provider, Proc, default: lambda { nil }
+property :vlt_format, Integer, default: 1
 
 default_action :install
 
@@ -147,12 +148,10 @@ action :install do
     action :create_if_missing
   end
 
-  instance = ::ChefCookbook::Instance::Helper.new(node)
-
   app_ini_path = ::File.join(custom_conf_path, 'app.ini')
 
   server_conf = new_resource.conf.fetch('server', {})
-  gogs_fqdn = server_conf.fetch('domain', instance.fqdn)
+  gogs_fqdn = server_conf['domain']
 
   repository_conf = new_resource.conf.fetch('repository', {})
   admin_conf = new_resource.conf.fetch('admin', {})
@@ -302,14 +301,16 @@ action :install do
   if new_resource.secure
     tls_rsa_certificate gogs_fqdn do
       vlt_provider new_resource.vlt_provider
+      vlt_format new_resource.vlt_format
       action :deploy
     end
 
-    tls = ::ChefCookbook::TLS.new(node, vlt_provider: new_resource.vlt_provider)
+    tls = ::ChefCookbook::TLS.new(node, vlt_provider: new_resource.vlt_provider, vlt_format: new_resource.vlt_format)
 
     if tls.has_ec_certificate?(gogs_fqdn)
       tls_ec_certificate gogs_fqdn do
         vlt_provider new_resource.vlt_provider
+        vlt_format new_resource.vlt_format
         action :deploy
       end
     end
