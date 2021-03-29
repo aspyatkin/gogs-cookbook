@@ -2,8 +2,8 @@ resource_name :gogs_app
 
 property :name, String, name_property: true
 
-property :version, String, default: '0.11.91'
-property :checksum, String, default: '56e03b8c83387a2a3ae4e3b46e8846f3b1ba785a743b33e682024bac746bf4d8'
+property :version, String, default: '0.12.3'
+property :checksum, String, default: '13eefa0a0d6fd7ed0c65b52182b6b6c318d4df71c962c744726a6d56367490ec'
 property :url, String, default: 'https://dl.gogs.io/%{version}/gogs_%{version}_linux_amd64.tar.gz'
 
 property :service_user, String, default: 'git'
@@ -34,6 +34,8 @@ property :postgres_password, String, required: true
 property :redis_host, String, required: true
 property :redis_port, Integer, required: true
 property :redis_db, Integer, default: 1
+
+property :brand_name, String, default: 'Git'
 
 property :vlt_provider, Proc, default: lambda { nil }
 property :vlt_format, Integer, default: 1
@@ -155,8 +157,8 @@ action :install do
 
   repository_conf = new_resource.conf.fetch('repository', {})
   admin_conf = new_resource.conf.fetch('admin', {})
-  service_conf = new_resource.conf.fetch('service', {})
-  mailer_conf = new_resource.conf.fetch('mailer', {})
+  auth_conf = new_resource.conf.fetch('auth', {})
+  email_conf = new_resource.conf.fetch('email', {})
   cron_conf = new_resource.conf.fetch('cron', {})
   git_conf = new_resource.conf.fetch('git', {})
 
@@ -169,6 +171,7 @@ action :install do
       {
         'run_user' => new_resource.service_user,
         'run_mode' => node.chef_environment.start_with?('development') ? 'dev' : 'prod',
+        'brand_name' => new_resource.brand_name,
         'https' => new_resource.secure,
         'server' => {
           'http_addr' => new_resource.service_host,
@@ -183,12 +186,12 @@ action :install do
           'force_private' => repository_conf.fetch('force_private', true)
         },
         'database' => {
-          'db_type' => 'postgres',
+          'type' => 'postgres',
           'host' => new_resource.postgres_host,
           'port' => new_resource.postgres_port,
           'name' => new_resource.postgres_database,
           'user' => new_resource.postgres_user,
-          'passwd' => new_resource.postgres_password
+          'password' => new_resource.postgres_password
         },
         'admin' => {
           'disable_regular_org_creation' => admin_conf.fetch('disable_regular_org_creation', true)
@@ -197,19 +200,19 @@ action :install do
           'install_lock' => true,
           'secret_key' => ::File.read(gogs_secret_file)
         },
-        'service' => {
-          'register_email_confirm' => service_conf.fetch('register_email_confirm', true),
-          'disable_registration' => service_conf.fetch('disable_registration', true),
-          'require_signin_view' => service_conf.fetch('require_signin_view', true),
-          'enable_notify_mail' => service_conf.fetch('enable_notify_mail', true)
+        'auth' => {
+          'require_email_confirmation' => auth_conf.fetch('require_email_confirmation', true),
+          'disable_registration' => auth_conf.fetch('disable_registration', true),
+          'require_signin_view' => auth_conf.fetch('require_signin_view', true),
+          'enable_email_notification' => auth_conf.fetch('enable_email_notification', true)
         },
-        'mailer' => {
-          'enabled' => mailer_conf.fetch('enabled', false),
-          'host' => mailer_conf.fetch('host', nil),
-          'port' => mailer_conf.fetch('port', nil),
-          'user' => mailer_conf.fetch('user', nil),
-          'passwd' => mailer_conf.fetch('passwd', nil),
-          'from' => mailer_conf.fetch('from', nil)
+        'email' => {
+          'enabled' => email_conf.fetch('enabled', false),
+          'host' => email_conf.fetch('host', nil),
+          'port' => email_conf.fetch('port', nil),
+          'user' => email_conf.fetch('user', nil),
+          'password' => email_conf.fetch('password', nil),
+          'from' => email_conf.fetch('from', nil)
         },
         'cache' => {
           'adapter' => 'redis',

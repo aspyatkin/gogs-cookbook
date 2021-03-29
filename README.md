@@ -19,12 +19,12 @@ gogs_app 'default' do
     'server' => {
       'fqdn' => 'git.example'
     },
-    'mailer' => {
+    'email' => {
       'enabled' => true,
-      'host' => mx.example,
+      'host' => 'mx.example',
       'port' => 587,
       'user' => 'admin@git.example',
-      'passwd' => 'TOPSECRET',
+      'password' => 'TOPSECRET',
       'from' => 'Gogs <admin@git.example>'
     }
   )

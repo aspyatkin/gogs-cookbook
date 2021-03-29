@@ -1,5 +1,5 @@
 ; App name that shows on every page title
-APP_NAME = Gogs
+BRAND_NAME = <%= @brand_name %>
 ; The name of the system user that runs Gogs
 RUN_USER = <%= @run_user %>
 ; Either "dev", "prod" or "test"
@@ -8,7 +8,7 @@ RUN_MODE = <%= @run_mode %>
 [server]
 PROTOCOL = http
 DOMAIN = <%= @server['domain'] %>
-ROOT_URL = %(PROTOCOL)s<%= @https ? 's' : '' %>://%(DOMAIN)s/
+EXTERNAL_URL = %(PROTOCOL)s<%= @https ? 's' : '' %>://%(DOMAIN)s/
 HTTP_ADDR = <%= @server['http_addr'] %>
 HTTP_PORT = <%= @server['http_port'] %>
 ; Permission for unix socket
@@ -55,15 +55,12 @@ KEY_FILE = custom/https/key.pem
 ; Allowed TLS version values: SSL30, TLS10, TLS11, TLS12
 TLS_MIN_VERSION = TLS10
 
-; Upper level of template and static file path
-; default is the path where Gogs is executed
-STATIC_ROOT_PATH =
 ; Default path for App data
 APP_DATA_PATH = <%= @server['app_data_path'] %>
 ; Application level GZIP support
 ENABLE_GZIP = false
-; Landing page for non-logged users, can be "home" or "explore"
-LANDING_PAGE = home
+
+LANDING_URL = /
 
 [repository]
 ; Root path for storing repositories's data, default is "~/<username>/gogs-repositories"
@@ -76,10 +73,6 @@ ANSI_CHARSET =
 FORCE_PRIVATE = <%= @repository['force_private'] %>
 ; Global maximum creation limit of repository per user, -1 means no limit
 MAX_CREATION_LIMIT = -1
-; Mirror sync queue length, increase if mirror syncing starts hanging
-MIRROR_QUEUE_LENGTH = 1000
-; Patch test queue length, increase if pull request patch testing starts hanging
-PULL_REQUEST_QUEUE_LENGTH = 1000
 ; Preferred Licenses to place at the top of the list
 ; Name must match file name in conf/license or custom/conf/license
 PREFERRED_LICENSES = Apache License 2.0,MIT License
@@ -119,8 +112,6 @@ MAX_FILES = 5
 [release.attachment]
 ; Whether attachments are enabled. Defaults to `true`
 ENABLED = true
-; Path for attachments. Defaults to `data/attachments`
-PATH = data/attachments
 ; One or more allowed types, e.g. image/jpeg|image/png
 ALLOWED_TYPES = */*
 ; Max size of each file. Defaults to 32MB
@@ -158,11 +149,11 @@ DSA = -1
 
 [database]
 ; Either "mysql", "postgres" or "sqlite3", you can connect to TiDB with MySQL protocol
-DB_TYPE = <%= @database['db_type'] %>
+TYPE = <%= @database['type'] %>
 HOST = <%= @database['host'] %>:<%= @database['port'] %>
 NAME = <%= @database['name'] %>
 USER = <%= @database['user'] %>
-PASSWD = `<%= @database['passwd'] %>`
+PASSWORD = `<%= @database['password'] %>`
 ; For "postgres" only, either "disable", "require" or "verify-full"
 SSL_MODE = disable
 ; For "sqlite3" and "tidb", use absolute path when you start as service
@@ -182,33 +173,31 @@ COOKIE_USERNAME = gogs
 COOKIE_REMEMBER_NAME = gogs_remember
 COOKIE_SECURE = <%= @https %>
 ; Reverse proxy authentication header name of user name
-REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
+REVERSE_PROXY_AUTHENTICATION_HEADER = X-WEBAUTH-USER
 ; Enable to set cookie to indicate user login status
 ENABLE_LOGIN_STATUS_COOKIE = false
 LOGIN_STATUS_COOKIE_NAME = login_status
 
-[service]
-ACTIVE_CODE_LIVE_MINUTES = 180
-RESET_PASSWD_CODE_LIVE_MINUTES = 180
+[auth]
+ACTIVATE_CODE_LIVES = 180
+RESET_PASSWORD_CODE_LIVES = 180
 ; User need to confirm e-mail for registration
-REGISTER_EMAIL_CONFIRM = <%= @service['register_email_confirm'] %>
+REQUIRE_EMAIL_CONFIRMATION = <%= @auth['require_email_confirmation'] %>
 ; Does not allow register and admin create account only
-DISABLE_REGISTRATION = <%= @service['disable_registration'] %>
+DISABLE_REGISTRATION = <%= @auth['disable_registration'] %>
 ; User must sign in to view anything.
-REQUIRE_SIGNIN_VIEW = <%= @service['require_signin_view'] %>
+REQUIRE_SIGNIN_VIEW = <%= @auth['require_signin_view'] %>
 ; Mail notification
-ENABLE_NOTIFY_MAIL = <%= @service['enable_notify_mail'] %>
+ENABLE_EMAIL_NOTIFICATION = <%= @auth['enable_email_notification'] %>
 ; More detail: https://github.com/gogits/gogs/issues/165
 ENABLE_REVERSE_PROXY_AUTHENTICATION = false
 ENABLE_REVERSE_PROXY_AUTO_REGISTRATION = false
 ; Enable captcha validation for registration
-ENABLE_CAPTCHA = true
+ENABLE_REGISTRATION_CAPTCHA = true
 
 [webhook]
 ; Types are enabled for users to use, can be "gogs", "slack", "discord", "dingtalk"
 TYPES = gogs, slack, discord, dingtalk
-; Hook task queue length, increase if webhook shooting starts hanging
-QUEUE_LENGTH = 1000
 ; Deliver timeout in seconds
 DELIVER_TIMEOUT = 15
 ; Allow insecure certification
@@ -216,17 +205,17 @@ SKIP_TLS_VERIFY = false
 ; Number of history information in each page
 PAGING_NUM = 10
 
-[mailer]
-ENABLED = <%= @mailer['enabled'] %>
+[email]
+ENABLED = <%= @email['enabled'] %>
 ; Buffer length of channel, keep it as it is if you don't know what it is.
 SEND_BUFFER_LEN = 100
 ; Name displayed in mail title
-SUBJECT = %(APP_NAME)s
+SUBJECT_PREFIX = `[%(BRAND_NAME)s] `
 ; Mail server
 ; Gmail: smtp.gmail.com:587
 ; QQ: smtp.qq.com:465
 ; Note, if the port ends with "465", SMTPS will be used. Using STARTTLS on port 587 is recommended per RFC 6409. If the server supports STARTTLS it will always be used.
-HOST = <%= @mailer['enabled'] ? "#{@mailer['host']}:#{@mailer['port']}" : '' %>
+HOST = <%= @email['enabled'] ? "#{@email['host']}:#{@email['port']}" : '' %>
 ; Disable HELO operation when hostname are different.
 DISABLE_HELO =
 ; Custom hostname for HELO operation, default is from system.
@@ -238,10 +227,10 @@ USE_CERTIFICATE = false
 CERT_FILE = custom/mailer/cert.pem
 KEY_FILE = custom/mailer/key.pem
 ; Mail from address, RFC 5322. This can be just an email address, or the `"Name" <email@example.com>` format
-FROM = <%= @mailer['enabled'] ? "#{@mailer['from']}": '' %>
+FROM = <%= @email['enabled'] ? "#{@email['from']}": '' %>
 ; Mailer user name and password
-USER = <%= @mailer['enabled'] ? "#{@mailer['user']}": '' %>
-PASSWD = <%= @mailer['enabled'] ? "`#{@mailer['passwd']}`" : '' %>
+USER = <%= @email['enabled'] ? "#{@email['user']}": '' %>
+PASSWORD = <%= @email['enabled'] ? "`#{@email['password']}`" : '' %>
 ; Use text/plain as format of content
 USE_PLAIN_TEXT = false
 
@@ -265,15 +254,13 @@ PROVIDER = <%= @session['provider'] %>
 ; mysql: go-sql-driver/mysql dsn config string, e.g. `root:password@/session_table`
 PROVIDER_CONFIG = <%= @session['provider_config'] %>
 ; Session cookie name
-COOKIE_NAME = i_like_gogits
+COOKIE_NAME = sess
 ; If you use session in https only, default is false
 COOKIE_SECURE = <%= @https %>
-; Enable set cookie, default is true
-ENABLE_SET_COOKIE = true
 ; Session GC time interval, default is 3600
-GC_INTERVAL_TIME = 3600
+GC_INTERVAL = 3600
 ; Session life time, default is 86400
-SESSION_LIFE_TIME = 86400
+MAX_LIFE_TIME = 86400
 ; Cookie name for CSRF
 CSRF_COOKIE_NAME = _csrf
 
@@ -464,7 +451,5 @@ ru-RU = ru
 
 [other]
 SHOW_FOOTER_BRANDING = false
-; Show version information about Gogs and Go in the footer
-SHOW_FOOTER_VERSION = false
 ; Show time of template execution in the footer
 SHOW_FOOTER_TEMPLATE_LOAD_TIME = false
