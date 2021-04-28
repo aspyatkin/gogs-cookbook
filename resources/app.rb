@@ -22,6 +22,7 @@ property :resolver_valid, Integer, default: 600
 property :resolver_timeout, Integer, default: 10
 property :access_log_options, String, default: 'combined'
 property :error_log_options, String, default: 'error'
+property :additional_access_log, [String, NilClass], default: nil
 
 property :conf, Hash, default: {}
 
@@ -294,6 +295,7 @@ action :install do
 
   ngx_vhost_variables = {
     fqdn: gogs_fqdn,
+    additional_access_log: new_resource.additional_access_log,
     access_log_options: new_resource.access_log_options,
     error_log_options: new_resource.error_log_options,
     upstream_host: new_resource.service_host,

@@ -35,8 +35,18 @@ server {
   server_name <%= @fqdn %>;
 
   charset utf-8;
-  access_log <%= @access_log %> combined;
-  error_log <%= @error_log %> error;
+
+  <% unless @additional_access_log.nil? %>
+  access_log <%= @additional_access_log %>;
+  <% end %>
+  <% if @access_log_options == 'off' %>
+  <% if @additional_access_log.nil? %>
+  access_log off;
+  <% end %>
+  <% else %>
+  access_log <%= @access_log %><% unless @access_log_options.empty? %> <%= @access_log_options %><% end %>;
+  <% end %>
+  error_log <%= @error_log %><% unless @error_log_options.empty? %> <%= @error_log_options %><% end %>;
 
   proxy_set_header Host $http_host;
   proxy_set_header X-Forwarded-Proto $scheme;

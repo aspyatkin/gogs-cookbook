@@ -2,7 +2,7 @@ name 'gogs'
 maintainer 'Alexander Pyatkin'
 maintainer_email 'aspyatkin@gmail.com'
 license 'MIT'
-version '4.3.0'
+version '4.3.1'
 description 'Installs and configures Gogs'
 long_description ::IO.read(::File.join(::File.dirname(__FILE__), 'README.md'))
 
