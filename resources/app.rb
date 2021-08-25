@@ -41,6 +41,8 @@ property :brand_name, String, default: 'Git'
 property :vlt_provider, Proc, default: lambda { nil }
 property :vlt_format, Integer, default: 1
 
+property :nginx_client_max_body_size, String, default: '250m'
+
 default_action :install
 
 action :install do
@@ -314,6 +316,7 @@ action :install do
     upstream_host: new_resource.service_host,
     upstream_port: new_resource.service_port,
     secure: new_resource.secure,
+    client_max_body_size: new_resource.nginx_client_max_body_size
   }
 
   if new_resource.secure
@@ -392,7 +395,9 @@ action :install do
     variables(
       user: new_resource.service_user,
       user_home: service_user_home,
-      gogs_work_dir: gogs_work_dir
+      gogs_work_dir: gogs_work_dir,
+      lfs_dir_base: ::File.dirname(lfs_objects_dir),
+      lfs_dir_name: ::File.basename(lfs_objects_dir)
     )
   end
 end
