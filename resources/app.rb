@@ -128,6 +128,16 @@ action :install do
     action :create
   end
 
+  lfs_objects_dir = ::File.join(data_dir, 'lfs-objects')
+
+  directory lfs_objects_dir do
+    owner new_resource.service_user
+    group new_resource.service_group
+    mode 0755
+    recursive true
+    action :create
+  end
+
   attachment_dir = ::File.join(data_dir, 'attachments')
 
   directory attachment_dir do
@@ -232,6 +242,9 @@ action :install do
         },
         'picture' => {
           'avatar_upload_path' => avatar_dir
+        },
+        'lfs' => {
+          'objects_path' => lfs_objects_dir
         },
         'attachment' => {
           'path' => attachment_dir

@@ -277,6 +277,12 @@ DISABLE_GRAVATAR = false
 ; This value will be forced to be false in offline mode or Gravatar is disbaled.
 ENABLE_FEDERATED_AVATAR = true
 
+[lfs]
+; The storage backend for uploading new objects.
+STORAGE = local
+; The root path to store LFS objects on local file system.
+OBJECTS_PATH = <%= @lfs['objects_path'] %>
+
 ; Attachment settings for issues
 [attachment]
 ; Whether attachments are enabled. Defaults to `true`
